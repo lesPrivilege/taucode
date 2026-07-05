@@ -51,6 +51,18 @@ compactable-content 的实际来源。轻量测试永远到不了这里：banana
   论文数据等 G2 配对 run。
 - 一周或首次自然越阈 + 净省台账有 ≥3 个样本,即触发 DF0 复盘。
 
+**阶段收口（2026-07-05,人裁）**：≥5 分诊未形式满足（1 条 (d) 正样本 +
+1 条 (d) 阴性 + 1 条 cache-break 样本 + round-1 数据）,但代理目标已达成——
+**成本结构确认为双模态**:① cache-break 主导（干净读分析:proj 4、0 重读、
+CH 93→72）;② re-read/(d) 主导（歧义编辑:自证螺旋、CH 37.9%、R591k）。
+净省不是一个数,是任务类型上的分布——选型问题从「哪个策略好」变成
+「哪个模式占我的工作分布多少」。(d) 判别器入档:`re_reads > 0` 且
+`compacted_path_re_reads ≈ 0` = 确证缺口而非信息缺口。
+trust-protocol 去风险确认:taucode 已有全套机件（verifyHash→HashMismatchError
+提示、read-dedup 已建未接线、compaction-core 已保 hash）,落盘日为移植接线
+而非发明。DF0 转入低强度伴随采集,主杠杆移至 G2（key + 快照 + 12 run）
+与双复盘选型。
+
 ## 与 G2 的关系
 
 DF0 出分布（真实 tool-result 尺寸、越阈频率、re-read 野生率），
