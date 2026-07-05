@@ -115,6 +115,65 @@ JSONL 含 workspace hash 与 accept 字段；两臂同快照的工作目录 diff
 **禁区**：不改 G2 packet 内容；不动 pi；不动 compaction-core 算法；
 不自动执行 `command:` 检查。
 
+## G1e · real-provider wiring（小；阻塞 G2 执行与 DF0）
+
+背景：`experiments/lib/provider.ts` 的 `resolveProvider` 只有 `"mock"` 分支——
+real 路径是 G1c/G1d 留下的显式 future work，是 pipeline 最后一块桥接代码。
+
+**任务**：
+1. `resolveProvider` 加 `"deepseek"` 分支：接 pi 原生 provider
+   （`pi/packages/ai/src/providers/deepseek.ts`，openai-completions API，
+   `DEEPSEEK_API_KEY` env 认证），不自建 provider。
+2. 同法加 OpenAI-compatible 泛型分支（baseUrl + model + env key 三参数），
+   覆盖 Mimo 类 endpoint。
+3. real 分支置 `cacheSignalPresent: true`，`usage.cacheRead` 真实记录
+   （mock 分支保持 null 语义不变）。
+4. key 缺失时报错信息明确指出所需 env 变量名；**不在任何文件/日志/JSONL 里
+   落 key 本体**。
+
+**验收**：mock 冒烟回归不破；`DEEPSEEK_API_KEY` 未设时 real 分支给出清晰报错
+（这是无 key 环境下唯一可测路径）；代码审查确认 key 不落盘。
+**禁区**：不改 pi；不动 mock 语义；不发真实请求（无 key 环境）。
+
+---
+
+# DF · dogfooding 切分（依据 docs/roadmap-dogfooding.md，可与 G2 执行并行）
+
+依赖：G1e → DF0（人侧）→ DF1‖DF2 → DF3。DF 系列全部是 extension/experiments
+增量，不碰 pi core，与 G2 的 workspace 隔离互不干扰。
+
+## DF0 ·（人侧，非 coding）日常基线
+
+key 入 shell env；全局 `~/.pi/agent/extensions/` 挂 deterministic-compaction；
+推荐参数为默认；日常用一周，只记「哪里不顺手」。
+
+## DF1 · compaction 可观测性 extension 增量
+
+**任务**：`/compaction` 命令族（status / diff / report，数据源
+`projectCompaction()` 报告 shape，移植 taucode 三命令语义）；
+registerMessageRenderer 渲染触发标记线（turn 号、压缩量、门控位置）；
+ambient telemetry——每 session 落 G1c schema JSONL 到
+`experiments/results/ambient/`（默认开，`/compaction telemetry off` 可关）。
+**验收**：mock session 里三命令输出正确；触发标记线在触发 turn 可见；
+ambient JSONL 与 G1c schema 校验通过。
+**禁区**：不改投影逻辑；telemetry 不出本机、`results/ambient/` 入 .gitignore。
+
+## DF2 · runtime 调参命令
+
+**任务**：`/compaction set keep-recent=N|compact-after=N`（写回 project
+settings，下一 turn 生效）；`/compaction on|off`（负区逃生门）；每次调参
+事件记入 ambient JSONL（时间、旧值→新值、当时 contextTokens）——这是
+runtime policy 自动化的样本源。
+**验收**：调参后下一 turn 投影行为随之变化（mock 可测）；事件记录完整。
+**禁区**：不做自动策略（只做手动 + 记录）。
+
+## DF3 · MCP bridge（后置，范围硬边界）
+
+`registerTool` 代理 MCP server tools（stdio + @modelcontextprotocol/sdk client
+起步）；tool specs 注入稳定前缀区，server 列表变更视同前缀重置。
+**只支持自用 1-2 个 server**，不做通用聚合器。等 DF0 一周试用明确
+「缺哪个工具」后再定目标 server，不预先开工。
+
 ## G2 · 执行轮（人分发，不进本轮 coding）
 
 task packets：refactor / exploration / **direct-transformation（负区间必跑臂）**
