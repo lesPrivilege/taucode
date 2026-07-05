@@ -13,12 +13,13 @@ if [[ ! -f "$CLI" ]]; then
   exit 1
 fi
 
-# First-run scaffold: isolated agent dir with the extension linked in.
-if [[ ! -d "$AGENT_DIR/extensions" ]]; then
-  mkdir -p "$AGENT_DIR/extensions"
-  ln -sfn "$ECODE_ROOT/extensions/deterministic-compaction" \
-    "$AGENT_DIR/extensions/deterministic-compaction"
-fi
+# Scaffold + self-heal: idempotent every launch. A guard on directory
+# existence cannot repair a dangling symlink (e.g. one created under a
+# different mount root) — Finding 1, launcher-test-2026-07-05. ln -sfn
+# is cheap and always converges on the correct native path.
+mkdir -p "$AGENT_DIR/extensions"
+ln -sfn "$ECODE_ROOT/extensions/deterministic-compaction" \
+  "$AGENT_DIR/extensions/deterministic-compaction"
 
 # Optional local profile for keys you don't want exported globally in .zshrc.
 # Never created, written, or read by anything else; lives under gitignored dir.
