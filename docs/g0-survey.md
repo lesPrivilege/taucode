@@ -284,3 +284,23 @@ Related but distinct: `reserveTokens = 16384` also defaults inside branch summar
 (`packages/agent/src/harness/compaction/branch-summarization.ts:203`;
 `packages/coding-agent/src/core/compaction/branch-summarization.ts:299`) — that is the
 branch-summary path, not the main compaction settings.
+
+---
+
+## Item 6 — extension discovery/loading from outside pi's tree（补录 2026-07-05，答 G1b 悬空点）
+
+**Verdict: 三条发现通道，均无需改 pi 树。** `discoverAndLoadExtensions`
+(`packages/coding-agent/src/core/extensions/loader.ts:651-698`)：
+
+1. **项目本地**：`<cwd>/.pi/extensions/` 自动扫描（loader.ts:673-674）。
+   `CONFIG_DIR_NAME` 默认 `.pi`（`src/config.ts:491`，可被 package `piConfig.configDir` 覆盖）。
+2. **全局**：`~/.pi/agent/extensions/`（loader.ts:677-678；agentDir 可由 env
+   `ENV_AGENT_DIR` 覆盖，config.ts:515-521）。
+3. **显式配置路径**：settings 的 `extensions?: string[]`（文件或目录路径，
+   `settings-manager.ts:104`，global/project settings.json 均可）。目录可带
+   package.json pi manifest 或 index.ts（`resolveExtensionEntries`，loader.ts:685-691）。
+
+对 ecode 的落法：extension 留在 `ecode/extensions/deterministic-compaction/`，
+在**运行 cwd 的 project settings**（`<workdir>/.pi/settings.json`）里写
+`"extensions": ["<ecode>/extensions/deterministic-compaction"]`，或在被试工作目录
+`.pi/extensions/` 放 symlink。两种都不触碰 `pi/` 子树，diff=0 约束保持。
