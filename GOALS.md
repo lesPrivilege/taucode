@@ -334,6 +334,14 @@ estimate`）,新增渲染沿用同一措辞。
 - 数字口径沿用 F-A 裁定:compactable 与 context 总量分别标注,
   永不混算
 
+> **状态（2026-07-05,Fable 验收）**:S1-S5 单元级验收通过（100/100,
+> `pi/` 零 diff;S2 经监工压缩事件后独立 audit,补齐纯函数测试缺口）。
+> **spec 修正**:触发标记渲染以实现为准——`registerEntryRenderer`
+> （appendEntry 路径),原文 `registerMessageRenderer` 作废
+> （sendMessage 的 `deliverAs:"steer"` 有中流转向风险,DF1 案底）。
+> 剩余:总验收（真实 session 五张截图叙事),建议 **Codex** 执行——
+> 直读 terminal 窗口,免 Claude Code 的手动 loop。
+
 ## G2 · 执行轮（人分发，不进本轮 coding）
 
 task packets：refactor / exploration / **direct-transformation（负区间必跑臂）**
