@@ -81,6 +81,12 @@ function readBoolEnv(name: string): boolean {
 
 export interface DeterministicCompactionConfig extends ProjectionConfig {
 	seamBEnabled: boolean;
+	/**
+	 * V2-TP master flag (env ECODE_TRUST_PROTOCOL). Default OFF. Gates ALL
+	 * trust-protocol behaviour so flag-off stays byte-identical to v1 (the G2
+	 * round-1 C arm must not be polluted). Packet 禁区: default must not be on.
+	 */
+	trustProtocolEnabled: boolean;
 }
 
 export function resolveConfig(): DeterministicCompactionConfig {
@@ -94,6 +100,7 @@ export function resolveConfig(): DeterministicCompactionConfig {
 		compactAfterInputTokens: readNumberEnv("ECODE_COMPACT_AFTER_INPUT_TOKENS", DEFAULT_COMPACT_AFTER_INPUT_TOKENS),
 		compactionOptions,
 		seamBEnabled: readBoolEnv("ECODE_SEAM_B"),
+		trustProtocolEnabled: readBoolEnv("ECODE_TRUST_PROTOCOL"),
 	};
 }
 
