@@ -389,3 +389,66 @@ describe("injection seam #3: pathHashExtractor", () => {
     expect(summary.hash).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Seam #4: injectable per-path summary metadata (V2-TP hash + diffstat)
+// ---------------------------------------------------------------------------
+
+describe("injection seam #4: summaryMeta (V2-TP)", () => {
+  const bigWrite: Message[] = [
+    makeUserMessage("u1", "write file"),
+    makeAssistantWithToolCall("a1", "tc1", "write", {
+      path: "foo.ts",
+      content: makeLargeCodeContent(),
+    }),
+    makeToolResultMessage("tc1", "wrote 4000 bytes"),
+  ];
+  const writeOpts = { keepRecentAssistantMessages: 0, minArgTokens: 100 };
+
+  it("enriches the code-production summary with hash + diffstat", () => {
+    const result = compactCodeProductions(bigWrite, writeOpts, {
+      summaryMeta: (path) =>
+        path === "foo.ts" ? { hash: "abcd1234", diffstat: "+3 -1" } : undefined,
+    });
+    expect(result.compactedCount).toBe(1);
+    const summary = result.messages[1]!.toolCalls![0]!.arguments as {
+      hash?: string;
+      diffstat?: string;
+    };
+    expect(summary.hash).toBe("abcd1234");
+    expect(summary.diffstat).toBe("+3 -1");
+  });
+
+  it("no summaryMeta => core default is byte-identical to v1 (no hash/diffstat keys)", () => {
+    // Package-level baseline: the CORE default (no enricher) must be v1 by
+    // itself, not via any extension-layer flag — G2's shared build depends on it.
+    const v1 = compactCodeProductions(bigWrite, writeOpts);
+    const emptyInjection = compactCodeProductions(bigWrite, writeOpts, {});
+    const summary = v1.messages[1]!.toolCalls![0]!.arguments as Record<string, unknown>;
+    expect(summary.hash).toBeUndefined();
+    expect(summary.diffstat).toBeUndefined();
+    expect(emptyInjection.messages[1]!.toolCalls![0]!.arguments).toEqual(summary);
+  });
+
+  it("enriches the read summary hash from summaryMeta (pi path: no hashline body)", () => {
+    const read: Message[] = [
+      makeUserMessage("u1", "read file"),
+      makeAssistantWithToolCall("a1", "tc1", "read", { path: "src/args.ts" }),
+      makeReadResultMessage(
+        "tc1",
+        Array.from({ length: 200 }, (_, i) => `plain line ${i}`).join("\n"),
+      ),
+    ];
+    const result = compactCodeProductions(
+      read,
+      { keepRecentAssistantMessages: 0, minResultTokens: 100 },
+      {
+        pathHashExtractor: pathLineCountExtractor,
+        summaryMeta: (path) => (path === "src/args.ts" ? { hash: "feedface" } : undefined),
+      },
+    );
+    const summary = result.messages[2]!.meta?.["compacted"] as ReadResultSummary;
+    expect(summary.hash).toBe("feedface");
+    expect(result.messages[2]!.content).toContain("#feedface");
+  });
+});

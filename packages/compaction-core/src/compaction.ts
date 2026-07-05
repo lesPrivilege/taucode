@@ -12,6 +12,10 @@ export interface CodeProductionSummary {
   head: string;
   tail?: string;
   result: string;
+  /** V2-TP: content hash after the write/edit (from injected summaryMeta). */
+  hash?: string;
+  /** V2-TP: diffstat for the change (from injected summaryMeta). */
+  diffstat?: string;
 }
 
 /**
@@ -101,10 +105,21 @@ export type PathHashExtractor = (
   content: string,
 ) => { path?: string; hash?: string } | undefined;
 
+/**
+ * Seam #4 (V2-TP) — per-path summary metadata. Given a resolved path, returns
+ * `{ hash?, diffstat? }` used to enrich the compacted summary. Injected by the
+ * caller (e.g. from a session ledger); absent by default so summaries stay v1.
+ */
+export type SummaryMetaExtractor = (
+  path: string,
+) => { hash?: string; diffstat?: string } | undefined;
+
 interface ToolCallCompactionInput {
   toolCall: ToolCall;
   toolResult: ToolResult | undefined;
   options: CompactionOptions;
+  /** V2-TP seam #4 — per-path summary metadata (hash + diffstat). */
+  summaryMeta?: SummaryMetaExtractor;
 }
 
 interface ToolResultCompactionInput {
@@ -117,6 +132,8 @@ interface ToolResultCompactionInput {
    * built-in read strategy defaults to {@link hashlineExtractor} when absent.
    */
   pathHashExtractor?: PathHashExtractor;
+  /** V2-TP seam #4 — per-path summary metadata (hash + diffstat). */
+  summaryMeta?: SummaryMetaExtractor;
 }
 
 interface ToolCallCompactionOutput {
@@ -250,6 +267,7 @@ function isEligibleForCompaction(
 function buildSummary(
   toolCall: ToolCall,
   toolResult: ToolResult,
+  summaryMeta?: SummaryMetaExtractor,
 ): CodeProductionSummary {
   const args =
     typeof toolCall.arguments === "string"
@@ -268,7 +286,7 @@ function buildSummary(
   const content = typeof contentField === "string" ? contentField : args;
   const { head, tail } = getHeadTail(content);
 
-  return {
+  const summary: CodeProductionSummary = {
     compacted: "code-production",
     tool: toolCall.name as "write" | "edit",
     path,
@@ -278,6 +296,14 @@ function buildSummary(
     tail,
     result: toolResult.content.slice(0, 200),
   };
+  // V2-TP: enrich only when an enricher is injected — no-enricher stays v1
+  // (JSON.stringify drops undefined, so absent keys = byte-identical).
+  if (summaryMeta && path) {
+    const meta = summaryMeta(path);
+    if (meta?.hash) summary.hash = meta.hash;
+    if (meta?.diffstat) summary.diffstat = meta.diffstat;
+  }
+  return summary;
 }
 
 /**
@@ -316,6 +342,7 @@ function buildReadResultSummary(
   msg: Message,
   toolCall: ToolCall | undefined,
   pathHashExtractor: PathHashExtractor,
+  summaryMeta?: SummaryMetaExtractor,
 ): ReadResultSummary {
   const content = msg.content ?? "";
   const parsedArgs = toolCall ? parseArguments(toolCall.arguments) : undefined;
@@ -329,7 +356,8 @@ function buildReadResultSummary(
     compacted: "read-result",
     tool: "read",
     path,
-    hash: extracted?.hash,
+    // V2-TP: prefer the injected ledger hash (pi has no hashline); else extractor.
+    hash: (summaryMeta && path ? summaryMeta(path)?.hash : undefined) ?? extracted?.hash,
     chars: content.length,
     lines: content.split("\n").length,
   };
@@ -502,6 +530,7 @@ function compactCodeProductionToolCall({
   toolCall,
   toolResult,
   options,
+  summaryMeta,
 }: ToolCallCompactionInput): ToolCallCompactionOutput | null {
   const args =
     typeof toolCall.arguments === "string"
@@ -513,7 +542,7 @@ function compactCodeProductionToolCall({
     return null;
   }
 
-  const summary = buildSummary(toolCall, toolResult!);
+  const summary = buildSummary(toolCall, toolResult!, summaryMeta);
   const summaryTokens = estimateTokens(JSON.stringify(summary));
   if (summaryTokens >= argTokens) {
     return null;
@@ -537,6 +566,7 @@ function compactReadToolResult({
   toolCall,
   options,
   pathHashExtractor,
+  summaryMeta,
 }: ToolResultCompactionInput): ToolResultCompactionOutput | null {
   if (isToolResultError(message)) {
     return null;
@@ -552,6 +582,7 @@ function compactReadToolResult({
     message,
     toolCall,
     pathHashExtractor ?? hashlineExtractor,
+    summaryMeta,
   );
   const summaryContent = formatReadResultSummary(summary);
   const summaryTokens = estimateTokens(summaryContent);
@@ -792,6 +823,11 @@ export interface CompactionInjection {
    * Defaults to {@link hashlineExtractor} (the `¶path#hash` format).
    */
   pathHashExtractor?: PathHashExtractor;
+  /**
+   * Seam #4 (V2-TP) — per-path summary metadata (hash + diffstat). Absent by
+   * default, so summaries are byte-identical to v1 (G2 shared-build baseline).
+   */
+  summaryMeta?: SummaryMetaExtractor;
 }
 
 /**
@@ -817,6 +853,7 @@ export function compactCodeProductions(
   const matchStrategy = injection?.matchStrategy ?? defaultMatchStrategy;
   const pathHashExtractor =
     injection?.pathHashExtractor ?? hashlineExtractor;
+  const summaryMeta = injection?.summaryMeta;
 
   // Find assistant message indices to determine "recent" messages
   const assistantIndices: number[] = [];
@@ -893,6 +930,7 @@ export function compactCodeProductions(
         toolCall: toolCallInfo.toolCall,
         options: opts,
         pathHashExtractor,
+        summaryMeta,
       });
       if (!output) return msg;
 
@@ -935,6 +973,7 @@ export function compactCodeProductions(
         toolCall: tc,
         toolResult,
         options: opts,
+        summaryMeta,
       });
 
       if (!output) {
