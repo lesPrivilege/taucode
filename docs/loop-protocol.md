@@ -20,6 +20,18 @@
 **硬禁区（沿用全项目纪律）**：不碰 `pi/` 上游文件；不动 compaction-core 算法；
 不把 key 写进任何文件/报告/commit；G2 packet 内容只读。
 
+## 校验节流（2026-07-05 修订：校验按风险分级，不逐 turn 全量）
+
+轮内默认 **run → 原样记录 → 下一步**（显式数据流优先，raw output 落报告即可，
+不做即时复核）。全量校验只在**验证节点**做一次批量收账。
+逐 turn 立即校验仅限三类高危：
+- git 状态变更（commit/merge/staged 冲突）；
+- credential 相邻操作（env、profile 文件）；
+- 将作为**数据结论**进入报告/论文的数字（footer 读数、token 计量）。
+其余（命令输出形态、文案、非关键路径行为）一律记录后移，节点时抽查。
+依据：机械步骤上的即时复核 = 无污染可防的隔离审查，纯缴税
+（note-subagent-economy）。校验密度跟随风险，不跟随 turn 数。
+
 ## 验证节点（返回 Cowork 复盘的触发条件，满足其一）
 
 1. `launcher-test-checklist.md` 十用例全部有 PASS/FAIL/SKIP 结论；
