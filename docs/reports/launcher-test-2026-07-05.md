@@ -101,3 +101,36 @@ harness neither of which exists yet.
 - Fix-forward commits: `bad552b` (checklist added) + this report's commit (checklist wording fix) — `git log --oneline bad552b..HEAD` at merge time.
 - Log-only items: table above, none blocking.
 - Verification-checkpoint condition met: **1 (all 10 items concluded)**.
+
+---
+
+## Cowork 复盘裁决（2026-07-05，Fable）
+
+**Log-only 逐条**：
+
+1. ambient JSONL 无界累积 → **(c)，带日期重审**：retention 设计在拿到 DF0
+   一周真实量级前是拍脑袋；DF0 复盘时用实际文件数/体积定 (a) 或 (b)。
+   唯一硬约束（不出本机、gitignored）已满足。
+2. `--help`/`--version` 触发路由 stderr → **裁 (a)**：informational flags
+   加入 skip 条件。裁决已下，降级为 fix-forward，下轮顺手改。
+3. 启动 ~1.5s → **只记录**。DF0 期间成为体感摩擦再议。
+4. `.ecode-agent/bin/` 来源不明 → **只记录**，复现或增长再查。
+5. T3 pi 无 key 回落 google → **不做**，上游行为，非 ecode 契约。
+
+**Finding 归档**：
+
+- Finding 1 → 两个动作：① launcher 已改为每次启动幂等重链（自愈，
+  见 fix commit），守卫类 scaffold 无法修复悬空 symlink 这一课记入实证；
+  ② **数据修正**：此前 interactive smoke 的 `CH95.4%` cache 读数验证的是
+  pi+DeepSeek 原生链路，**不含** extension——该数据点降级为「DeepSeek 原生
+  cache 有效」的证据，不得引用为 extension 效果。跨环境（沙箱→native）
+  symlink 漂移本身是墙三（验证基础设施折旧）的微型样本。
+- Finding 3 → 覆盖缺口成立：slash-command 行为与 footer 渲染需要真 interactive
+  session 验证，纳入下轮验证节点。
+
+**下一轮 loop 定义**：
+
+- 目标：T9 补测（真 key 全链路）+ interactive 会话验证 extension 行为
+  （`/compact-status` 门控读数、触发标记线、`/compaction set` 生效）。
+- 验证节点：T9 PASS 且 interactive 三项有实测记录；或 log-only 级阻塞。
+- 其后即 DF0 起点（日常使用一周）与 G2 round 1（快照构建 + 12 run）。
