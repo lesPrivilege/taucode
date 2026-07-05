@@ -185,6 +185,155 @@ runtime policy 自动化的样本源。
 **只支持自用 1-2 个 server**，不做通用聚合器。等 DF0 一周试用明确
 「缺哪个工具」后再定目标 server，不预先开工。
 
+## V2-TP · trust-protocol 切片（Opus 执行;核心 harness 改动）
+
+依据：`docs/note-view-based-context.md` 信任协议节 + DF0 双模态收口
+（(d) 判别器:`re_reads>0` 且 `compacted_path_re_reads≈0`）。
+原则重申:**harness 只注入可机械验证的事实,永不注入信心。**
+
+**基线纪律（最高优先约束）**：全部改动置于 feature flag
+`ECODE_TRUST_PROTOCOL`（默认 **off**）之后。G2 round 1 的 C 臂必须在
+flag-off 下与 v1 字节等价——round 2 才开 C' 臂（flag-on）对照。
+
+**任务**（移植 + 接线为主,发明为辅;taucode 机件清单已核实存在）：
+1. **视图登记**：extension 监听 read/bash tool result 事件,记
+   `path → {contentHash, turn}` 于 session 内存 ledger（不落盘、不改
+   result 本体）。hash 算法对齐 taucode hashline（SHA-256 截断）。
+2. **edit 物证保全**：edit/write result 事件时计算落盘后文件 hash,记入
+   ledger（`path → {newHash, turn, diffstat}`）;compaction-core 的
+   CodeProductionSummary 已保 path/head/tail——扩展 injection 使投影后
+   summary 必含 `hash + diffstat`（G1a 注入点,不改算法主体）。
+3. **失配提示注入**：context hook 投影时,对 context 中「出生 hash ≠ 当前
+   ledger hash」的视图,在 **volatile 尾区**追加一个确定性提示块:
+   `[stale-view] <path>: view from <hashA> predates your edit at turn <N>
+   (now <hashB>); re-read only if you need current content.`
+   仅 send-time,不入 session;置于尾区不破前缀。每 path 每 turn 至多一条。
+4. **read-dedup 接线评估**：taucode `read-dedup.ts`（已建未接线）作为
+   循环病理 (c) 检测器移植到 extension 侧——本任务只做**评估 + 最小接线
+   方案**,实报告,不实装（防 scope 蔓延）。
+
+**验收**：
+- flag-off:与 v1 全部现有测试字节级同行为（回归全绿即证）;
+- flag-on 单测:hash 相同不注入;hash 不同注入且格式精确;edit summary
+  投影后含 hash+diffstat;提示块位于尾区（前缀稳定性测试);
+- mock 场景重放:构造「edit 后读到旧视图」fixture,flag-on 时模型输入里
+  出现 stale-view 行;
+- **效果证伪路径**（round 2 执行,本轮只留观测钩子):歧义编辑任务上
+  (d) 率 flag-on/off 对比,ambient 记 flag 状态。
+**禁区**：不碰 `pi/`;不改 compaction-core 投影算法主体（只经注入点);
+不注入任何非文件系统可验证的语句;flag 默认值不得为 on。
+
+## DF-TUI · compaction 可视化 TUI（新分发模式:Opus 切片,DS 实现,Opus 兜底）
+
+动机:TUI 是策略奏效/失效最直观的展面,也是对外示值最短路径——
+将来 README 或推文串里的那几张截图,就从这条总验收里出。
+地基已有:`gate-widget.ts` 的 `renderGateWidget` 纯函数 + 7 个测试;
+DF1 的 observability 三命令（status/diff/report）+ 触发标记线;
+V2-TP hint、compaction 触发、CH 数据全部可从 extension 侧取到。
+
+**分发模式（本 goal 首试）**:Opus 把工作切成小 loop 交 DS 实现
+（DS base model 可承接稍重切片）,Opus 逐片审收 + 兜底修复。
+
+### 围栏（每条 DS prompt 原文携带,不引用不省略）
+
+> **围栏正文**:只改 `extensions/` 下文件;`pi/` 目录任何文件只读——
+> 不 import、不修改、不新建 pi 源码;TUI 渲染一律经
+> `ctx.ui.setWidget` / `registerMessageRenderer`,禁止直接写 pi 的
+> interactive-mode 或任何 core 模块。
+>
+> **案底（L3 违规,2026-07-05）**:DS 在实现 compact-gate-widget 时
+> 漂进了 pi core——把 widget 注册代码写进了
+> `pi/packages/coding-agent/src/interactive-mode.ts`。该违规被人拦截
+> 回滚,但证实了 DS 在被指向 `pi/` 内文件做只读核对时,会顺手修改
+> 目标文件。围栏因此必须在 prompt 里,不能依赖 session 先前轮次或文档
+> ——DS 没有契约记忆。
+
+### 数字口径（F-A 裁定,锁死）
+
+gate widget 的 `rawTokens` 是 **compactable-content 估算**（projection.ts
+逐条累加 tool-result 文本）,不是 context 总量（含 system prompt、tool
+definitions、user turns 等,量级差可达 ~100x）。TUI 任何展示数字的位置
+必须标注口径:
+
+- `compactable` 标签:gate 阈值、savings、rawTokens——都是 compactable
+  scale
+- `context` 标签:仅当展示 provider 返回的 `usage.input` 或估算的
+  context 总 token 时使用
+
+两个口径**永不相加、永不相除**。违反即 bug,不是样式问题。
+`observability.ts:184-189` 已有 F-A 标签先例（`compactable-content
+estimate`）,新增渲染沿用同一措辞。
+
+### 功能切片（Opus 按此拆 loop,可再细分）
+
+**S1 · gate 状态条**（完善现有 `gate-widget.ts`）
+- 展示:门控位置（compactable / threshold）、waiting / active / off、
+  当前生效参数 keep-recent 和 compact-after
+- 数据源:`gateStatus` singleton（seam-A 每 turn 更新）
+- 验收:纯函数 `renderGateWidget` 覆盖全部 triggerState 分支 + 参数
+  回显;数字标注 `compactable` 口径;extension 回归绿;`pi/` 零 diff
+
+**S2 · 触发标记线**（增量:observability trigger marker 的 TUI 化）
+- 展示:compaction 实际触发 turn 的可见标记 + 该次 replacements 数 +
+  省下 token 数（compactable scale）
+- 数据源:seam-A hook 触发时的 `CompactionProjectionReport`
+  （`report.replacements.length` / `report.savedTokens`）
+- 渲染路径:`pi.sendMessage({ customType })` + `registerMessageRenderer`
+  （同 DF1 既有模式,仅改渲染文本）
+- 验收:触发 turn 可见标记包含 replacement 数和 saved token 数;
+  未触发 turn 无标记;纯函数测试
+
+**S3 · CH 轨迹微条**
+- 展示:近 N turn（N=10 或可配）的 cache-hit ratio（`cacheRead /
+  (cacheRead + input)`）走势,transition dip 可见即达标
+- 数据源:provider `usage.cacheRead`（pi-ai 映射自
+  `prompt_cache_hit_tokens`）;每 turn `message_end` 事件采集
+- 存储:session 内存 ring buffer（`{turn, ratio}[]`）,不落盘
+- 渲染:widget 单行 ASCII 微图（`▁▂▃▅▇` 系列或等宽 bar）
+- 验收:mock 序列注入 usage → 渲染输出含可辨 dip;null cacheRead turn
+  显示占位符（非零、非崩溃）;纯函数测试
+
+**S4 · trust-protocol 指示**（flag-on 时）
+- 展示:stale-view hint 触发时在该 turn 产生一条可见标记,包含
+  path 和 birth→current hash 对
+- 数据源:`staleViewHints()` 返回值（context hook 内已计算,无需
+  重算——把 hint 列表缓存到 module-level holder 供 widget 读取）
+- 门控:`ECODE_TRUST_PROTOCOL` off 时不渲染、不注册、不占空间
+- 验收:flag-on mock 有 hint → 标记可见;flag-off → 无渲染;
+  flag-on 但无 stale → 无渲染;纯函数测试
+
+**S5 · `/compact-dash` 汇总视图**
+- 展示:以上四件的会话级汇总（单命令一屏）:
+  - gate 当前状态（S1 数据）
+  - 累计触发次数 + 总 saved tokens（S2 数据）
+  - CH 轨迹全图（S3 数据,全 session 不截断）
+  - trust-protocol hint 累计触发数（S4 数据,flag-off 时该行不出现）
+- 渲染:`registerCommand("compact-dash")`,输出经 `sendMessage`
+  customType 渲染（同 compact-status 模式）
+- 验收:mock session 跑完 → 命令输出包含四部分;数字与分部件一致;
+  纯函数测试
+
+### 每片通用验收
+
+- 渲染逻辑纯函数化（`(state) => string[]`,无 side effect）+ vitest 单测
+- extension 全量回归绿（73+ tests）
+- `pi/` 零 diff（`git diff pi/` 为空）
+- flag-off / flag-on 两态渲染正确（S4 在 flag-off 时不可见）
+
+### 总验收（产品级）
+
+**一次真实 session 的截图序列能不看文档讲清「压缩发生了什么、值不值」。**
+具体:从 gate waiting → 越阈触发 → CH dip → CH 恢复 → `/compact-dash`
+汇总,5 张截图构成一个自解释叙事。这直接服务发布种子的质量叙事——
+将来 README 或推文串里的那几张图,就从这条验收里出。
+
+### 禁区
+
+- 不碰 pi core（案底重申——L3 违规教训）
+- 不改 compaction-core 投影算法、不改 trust-protocol 逻辑——纯展示层
+- 数字口径沿用 F-A 裁定:compactable 与 context 总量分别标注,
+  永不混算
+
 ## G2 · 执行轮（人分发，不进本轮 coding）
 
 task packets：refactor / exploration / **direct-transformation（负区间必跑臂）**
