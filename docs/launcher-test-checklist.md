@@ -20,8 +20,8 @@ PASS / FAIL / SKIP + 实际输出摘录。
 | T5 | `ecode --model <其他>` | 路由整段跳过，无 routing stderr |
 | T6 | `ECODE_DEFAULT_MODEL=... ecode` | 用该值，优先于 key 探测 |
 | T7 | `.ecode-agent/env` 写一行假 export 后跑 | 被 source（用 T4 同法验证）；确认该文件不在 `git status` 中 |
-| T8 | extension 实际加载 | 会话内 `/compaction status` 有输出；footer 正常 |
-| T9 | 真 key（若已备好） | 真实一问一答跑通；`/compaction status` 显示门控位置；ambient JSONL 落盘（检查 `experiments/results/ambient/`） |
+| T8 | extension 实际加载 | 会话内 `/compact-status` 有输出；footer 正常 |
+| T9 | 真 key（若已备好） | 真实一问一答跑通；`/compact-status` 显示门控位置；ambient JSONL 落盘（检查 `experiments/results/ambient/`） |
 | T10 | 隔离验证 | 跑过 ecode 后 `~/.pi/` 无新增/改动（对比 mtime） |
 
 ## 已知边界（报告时不算 FAIL）
