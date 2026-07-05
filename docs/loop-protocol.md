@@ -26,6 +26,17 @@
 （L3 即此:被指向 interactive-mode.ts 查契约,顺手把 widget 写进了 pi core）。
 围栏在 prompt 里,不在文档里。
 
+## 调研先行（2026-07-05 修订：不重复造轮子）
+
+新方向立项前，先分发一轮调研（Grok/检索 agent，带出处、带事实等级、
+带「与预设不符的发现」反偏差节），产出三类结论之一才动工：
+- **已有现成件** → 用（pi skills、server-side compaction 均属此类）；
+- **有 adjacent art 但主张不同** → 站在延长线上做增量，prior-art
+  写清差异（view-based 之于 tool-result clearing）；
+- **确认空白** → 立项，且空白本身入叙事（cache trade-off 无公开
+  一手量化 → G2 数据的公开价值）。
+调研成本一轮 prompt，避免的是最贵的浪费：把已存在的东西再做一遍。
+
 ## 校验节流（2026-07-05 修订：校验按风险分级，不逐 turn 全量）
 
 轮内默认 **run → 原样记录 → 下一步**（显式数据流优先，raw output 落报告即可，
