@@ -342,7 +342,69 @@ estimate`）,新增渲染沿用同一措辞。
 > 剩余:总验收（真实 session 五张截图叙事),建议 **Codex** 执行——
 > 直读 terminal 窗口,免 Claude Code 的手动 loop。
 
-## G2 · 执行轮（人分发，不进本轮 coding）
+## G3-AR · 实验产物留存 + session review 缓存（阻塞 R2-preflight;Codex 可执行,packet 自含）
+
+背景:round 1 质量复核失败——`run.ts` 在写 JSONL 后 `rmSync(tempDir)`,
+12 个 workspace 全灭,completion/quality 永久不可审(E1-C static 0/5
+的发现全靠 acceptance 代理)。两件合一,同一数据面。
+2026-07-06 裁定:Codex 的补账与 gate-release 预算裁定通过;本 packet
+是 R2-preflight 第一前置,先发 Codex。
+
+**任务**:
+1. `run.ts` 产物留存:run 结束、清理 tempDir **之前**,导出到
+   `experiments/results/<run>/artifact/`——allowed outputs 文件、
+   `git diff --stat` + `git diff`(相对快照)、pending command checks
+   的实际执行输出(R1 类的 pnpm test/typecheck 结果另存 log)。
+   体积失控风险:diff 超过 1MB 截断并标注。
+2. compare.ts 陈旧标头修复(fix-forward 已裁):按 meta.provider
+   打标,mock 才写 SYNTHETIC。
+3. **DF-REC 落地**(masterplan 第六节既有 packet,并入本 goal):
+   `/session-export` 或 post-session 脚本,打包 session JSONL 路径 +
+   ambient 行 + `/compact-dash` 终态 + 触发标记列表 →
+   `results/reviews/<session-id>.md`。F-A 双口径分别标注。
+**验收**:重放一个 R1 run,artifact 目录齐全且 diff 可读;compare
+重新生成后标头正确;一次真实 session 后 review 文件可读。
+**禁区**:不碰 pi;不改 compaction/trust 逻辑;不动已有 JSONL schema
+(只增不改)。
+
+## V3-WS · 工作语义 summarize 策略（Opus 执行;flag 门控,评估等 R2）
+
+背景:round 1 的 turn 膨胀 + E1-C 任务未完成(投影 26 次,产物缺席),
+指向投影后**工作语义丢失**——模型忘了自己做到哪。社区证据
+(Factory:structured/anchored 3.70 vs 原生 3.44/3.35)确认结构化
+优于散文摘要;我们做**确定性版 anchored summary**,不引入 LLM 调用。
+
+**设计**:
+1. **工作语义锚点块**:extension 维护一个 deterministic 分节状态块
+   (files touched + hash / edits done + diffstat / tests run + 结果 /
+   pending task 由 packet acceptance 派生),全部来自 tool 事件,
+   零 LLM。投影发生时,锚点块注入 volatile 尾区(与 stale-view hint
+   同通道,同前缀纪律:send-time only、byte-stable 区外)。
+2. per-tool 摘要结构升级:read summary 加导出符号清单(确定性解析,
+   仅 .ts 起步);edit summary 已有 hash+diffstat(V2-TP)。
+3. flag:`ECODE_SEMANTIC_ANCHOR`,默认 off——**R2-core 的 C 臂冻结
+   在现行 v1,本策略作为 C'' 臂在 core 之后追加评估**(与 Codex
+   预算的 gate-release 结构一致)。建设可与 G3-AR 并行,但数字必须
+   排队,不得混入 R2-core。
+**假设(可证伪)**:锚点块显著降低 turn 膨胀(压缩臂 turns 逼近 A 臂),
+E1 类任务 static acceptance 不再缺席。
+**验收**:单测(锚点块纯函数、分节格式、尾区注入 ≤1/turn);flag-off
+字节等价回归;mock 场景重放。
+**禁区**:不碰 pi;锚点内容仅可机械验证事实(信任协议同款纪律——
+不写「进展顺利」类评价,只写「edited X, hash Y→Z, tests 7/7」)。
+
+> **状态(2026-07-06,Fable 验收)**:G3-AR 完成(artifact 导出 +
+> compare 标头修复 + export-review,46 测试,smoke 实证);V3-WS 完成
+> (分支 `v3-ws-semantic-anchor`,4 commits,137 测试,绊线干净,
+> 自审抓获 failed-edit/pending 正确性 bug——RED→GREEN 修复在案)。
+> **裁定**:① V3-WS 留分支不并 main,R2-core 全程以 main(v1)跑
+> C 臂,core 完成后并入再跑 C'' 追加——基线论证保持无懈可击;
+> ② `ECODE_ANCHOR_ACCEPTANCE` 的 harness 侧接线归 experiments
+> (run.ts 从 packet 的 file-exists 行提取路径填 env,仅 C'' 臂),
+> 作为 R2-preflight 预备项交 Codex;③ read summary 符号清单
+> (V3-WS 设计 2)确认为独立后续 packet,不并本轮;④ R2-preflight
+> 另两项预备:B-fixed(B 臂 session 配置可比阈值)与 D1 触发修复
+> (低阈值 8k 或扩容,执行者按 verdict 二选一,触发即过门)。
 
 task packets：refactor / exploration / **direct-transformation（负区间必跑臂）**
 三类固定编号；Mimo 为被试跑 token 轴；DeepSeek API 跑 cache 轴对账
