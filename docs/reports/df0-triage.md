@@ -43,3 +43,13 @@ direct cost of that gap.
 **Priority note:** if (d) recurs, the trust-protocol slice (edit-result preservation
 + one-line mismatch hint) is smaller than the full ledger and independently testable
 — (d)-rate before/after is its own effect proof. It can ship ahead of the ledger.
+
+### (d) frequency — negative sample `019f3236` — 2026-07-05
+
+The gate-widget extraction (mechanical, unambiguous, no stale-view exposure) ran
+**7 reads / 0 re-reads**, CH 93.3%, R209k, proj 0 — no spiral. So **(d) did NOT
+recur** on a low-ambiguity edit. Reading so far: (d) is **task-conditional** —
+triggered by contract ambiguity / stale-view exposure (as in (d)-1's render-contract
+check), not automatic on edits. Implication for the priority inversion: don't
+front-run the trust-protocol on *frequency* alone — it is a conditional (though
+costly-when-hit) pathology. Needs more samples across task types before a call.
