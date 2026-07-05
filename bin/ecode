@@ -20,9 +20,41 @@ if [[ ! -d "$AGENT_DIR/extensions" ]]; then
     "$AGENT_DIR/extensions/deterministic-compaction"
 fi
 
+# Optional local profile for keys you don't want exported globally in .zshrc.
+# Never created, written, or read by anything else; lives under gitignored dir.
+# Format: plain `export FOO=bar` lines.  chmod 600 recommended.
+PROFILE="$AGENT_DIR/env"
+if [[ -f "$PROFILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$PROFILE"
+fi
+
 # Recommended defaults (override per-invocation via real env).
 export PI_CODING_AGENT_DIR="$AGENT_DIR"
 export ECODE_COMPACT_AFTER_INPUT_TOKENS="${ECODE_COMPACT_AFTER_INPUT_TOKENS:-32000}"
 export ECODE_KEEP_RECENT_ASSISTANT_MSGS="${ECODE_KEEP_RECENT_ASSISTANT_MSGS:-3}"
 
-exec node "$CLI" "$@"
+# Provider routing: presence-detection only (names, never values, never files).
+# Skipped entirely if the user passed an explicit --model.
+have_model_flag=false
+for a in "$@"; do
+  [[ "$a" == "--model" || "$a" == --model=* ]] && have_model_flag=true && break
+done
+
+route_args=()
+if ! $have_model_flag; then
+  if [[ -n "${ECODE_DEFAULT_MODEL:-}" ]]; then
+    route_args+=(--model "$ECODE_DEFAULT_MODEL")
+  elif [[ -n "${DEEPSEEK_API_KEY:-}" ]]; then
+    route_args+=(--model "deepseek/deepseek-v4-flash")
+    echo "ecode: routing -> deepseek (DEEPSEEK_API_KEY present)" >&2
+  elif [[ -n "${MIMO_API_KEY:-}" && -n "${MIMO_BASE_URL:-}" ]]; then
+    export ECODE_OPENAI_COMPAT_BASE_URL="$MIMO_BASE_URL"
+    echo "ecode: routing -> mimo (MIMO_API_KEY + MIMO_BASE_URL present)" >&2
+  else
+    echo "ecode: no provider key detected (checked: DEEPSEEK_API_KEY, MIMO_API_KEY+MIMO_BASE_URL)." >&2
+    echo "ecode: export one in your shell, or put it in $PROFILE (chmod 600), or pass --model." >&2
+  fi
+fi
+
+exec node "$CLI" ${route_args[@]+"${route_args[@]}"} "$@"
