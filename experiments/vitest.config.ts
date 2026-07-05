@@ -22,6 +22,11 @@ export default defineConfig({
 		globals: true,
 		environment: "node",
 		testTimeout: 30000,
+		// Only the harness's OWN tests. Prepared taucode snapshots under snapshots/
+		// (built by prepare-snapshot.ts) contain taucode's test suites — those must
+		// NOT be collected here; they run under taucode's toolchain, not ecode's.
+		include: ["test/**/*.test.ts"],
+		exclude: ["snapshots/**", "workspaces/**", "node_modules/**"],
 		server: {
 			deps: {
 				external: [/@silvia-odwyer\/photon-node/],

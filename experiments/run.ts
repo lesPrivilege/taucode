@@ -27,6 +27,7 @@
 
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve as resolvePath } from "node:path";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
@@ -47,6 +48,10 @@ import {
 } from "./lib/compaction-core-adapter.js";
 import { ARMS, isArmId, DEFAULT_COMPACT_AFTER_INPUT_TOKENS, DEFAULT_KEEP_RECENT_ASSISTANT_MESSAGES } from "./lib/arms.js";
 import { getScenario } from "./fixtures/index.js";
+import { isPacketSpec, loadPacket, type PacketScenario } from "./lib/packet.js";
+import type { Scenario } from "./lib/scenario.js";
+import { runAcceptance, type AcceptanceRow } from "./lib/acceptance.js";
+import { copyWorkspaceFrom } from "./lib/workspace.js";
 import { resolveProvider, DEFAULT_PROVIDER } from "./lib/provider.js";
 import { RunMetrics, type MetaRow, type MetricRow } from "./lib/metrics.js";
 
@@ -62,6 +67,15 @@ interface Args {
 	compactAfter: number;
 	keepRecent: number;
 	seamB: boolean;
+	/**
+	 * G1d: seed the run's working dir from a prepared snapshot (built once by
+	 * prepare-snapshot.ts) instead of a fresh empty tmpdir. When set, the snapshot's
+	 * `workspace/` is copied in and its {source, manifestHash} recorded in the JSONL.
+	 * Unset → unchanged legacy behaviour (empty tmpdir + scenario.seedFiles).
+	 */
+	workspaceFrom?: string;
+	/** Override the packets doc a `packet:`/`G2-…` scenario is loaded from. */
+	packetsDoc?: string;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -89,7 +103,32 @@ function parseArgs(argv: string[]): Args {
 		keepRecent: asNum(flags["keep-recent"] ?? flags["keep-recent-assistant-messages"], DEFAULT_KEEP_RECENT_ASSISTANT_MESSAGES),
 		// --seam-b forces seam B on regardless of arm default (arm D sets it anyway).
 		seamB: flags["seam-b"] === true || flags["seam-b"] === "true",
+		workspaceFrom: typeof flags["workspace-from"] === "string" ? flags["workspace-from"] : undefined,
+		packetsDoc: typeof flags["packets-doc"] === "string" ? flags["packets-doc"] : undefined,
 	};
+}
+
+// --- scenario resolution: fixture id OR packet spec -----------------------------
+
+// Repo root anchored to run.ts's own location (experiments/run.ts -> repo root is
+// one level up), so packet/doc paths resolve regardless of the invoking cwd.
+const REPO_ROOT = resolvePath(dirname(fileURLToPath(import.meta.url)), "..");
+
+/**
+ * Resolve a `--scenario` value to a Scenario. A fixture id (e.g. "refactor") comes
+ * from the hardcoded registry; a packet spec ("G2-R2", "packet:G2-R2", or a `.md`
+ * path) is parsed from the G2 packets doc via lib/packet.ts. Packet scenarios carry
+ * their acceptance checks; fixture scenarios do not.
+ */
+function resolveScenario(spec: string, packetsDoc: string | undefined): Scenario | PacketScenario {
+	if (isPacketSpec(spec)) {
+		return loadPacket(spec, { repoRoot: REPO_ROOT, doc: packetsDoc });
+	}
+	return getScenario(spec);
+}
+
+function isPacketScenario(s: Scenario | PacketScenario): s is PacketScenario {
+	return Array.isArray((s as PacketScenario).acceptance);
 }
 
 // --- extract compacted read paths from a projection outcome ---------------
@@ -115,8 +154,9 @@ function compactedReadPaths(messages: { role: string; meta?: Record<string, unkn
 async function run(args: Args): Promise<void> {
 	if (!isArmId(args.arm)) throw new Error(`Unknown arm "${args.arm}". Use A, B, C, or D.`);
 	const arm = ARMS[args.arm];
-	const scenario = getScenario(args.scenario);
+	const scenario = resolveScenario(args.scenario, args.packetsDoc);
 	const provider = resolveProvider(args.provider, scenario);
+	const packetScenario = isPacketScenario(scenario) ? scenario : null;
 
 	// seam B: arm default OR explicit --seam-b.
 	const seamBInstalled = arm.seamBInstalled || args.seamB;
@@ -126,16 +166,32 @@ async function run(args: Args): Promise<void> {
 		compactionOptions: { keepRecentAssistantMessages: args.keepRecent },
 	};
 
+	// Working directory. Two mutually-exclusive construction paths:
+	//   (default) fresh empty tmpdir, then write scenario.seedFiles into it — the
+	//             legacy path, unchanged for the mock fixtures.
+	//   (--workspace-from) copy a prepared snapshot's workspace/ in (cheap, per-run),
+	//             recording {source, manifestHash} for provenance. run.ts does ONLY
+	//             this cheap copy; building the snapshot is prepare-snapshot.ts's job.
 	const tempDir = join(tmpdir(), `pi-ecode-run-${arm.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-	mkdirSync(tempDir, { recursive: true });
-	const agentDir = join(tempDir, "agent");
-	mkdirSync(agentDir, { recursive: true });
-	// seed files if the scenario needs pre-existing content.
-	for (const [rel, content] of Object.entries(scenario.seedFiles ?? {})) {
-		const p = join(tempDir, rel);
-		mkdirSync(dirname(p), { recursive: true });
-		writeFileSync(p, content, "utf-8");
+	let workspaceProvenance: { source: string; manifestHash: string | null } | undefined;
+	if (args.workspaceFrom) {
+		const copied = copyWorkspaceFrom(args.workspaceFrom, tempDir);
+		workspaceProvenance = { source: copied.source, manifestHash: copied.manifestHash };
+	} else {
+		mkdirSync(tempDir, { recursive: true });
+		// seed files if the scenario needs pre-existing content.
+		for (const [rel, content] of Object.entries(scenario.seedFiles ?? {})) {
+			const p = join(tempDir, rel);
+			mkdirSync(dirname(p), { recursive: true });
+			writeFileSync(p, content, "utf-8");
+		}
 	}
+	// The agent dir is a SIBLING of the workspace, never inside it — so a snapshot
+	// copy stays a faithful copy and the acceptance-checked workspace is not
+	// polluted by pi's per-run agent state. (For the legacy empty-tmpdir path this
+	// is behaviourally identical: the fixture never reads pi's agent dir.)
+	const agentDir = `${tempDir}-agent`;
+	mkdirSync(agentDir, { recursive: true });
 
 	const metrics = new RunMetrics();
 
@@ -240,6 +296,15 @@ async function run(args: Args): Promise<void> {
 	const sessionFile = sessionManager.getSessionFile();
 	const sessionId = sessionFile ? sessionFile.split("/").pop()!.replace(/\.jsonl$/, "") : "";
 
+	// data_kind reflects the workload: a packet run seeded from a real snapshot is
+	// NOT a synthetic smoke fixture. A mock-provider packet run against a snapshot
+	// is a "mock-packet-smoke". The bare fixture path keeps its original marker.
+	const dataKind = packetScenario
+		? args.provider === "mock"
+			? "mock-packet-smoke"
+			: "g2-packet-run"
+		: "synthetic-smoke-fixture";
+
 	// Assemble the JSONL rows.
 	const meta: MetaRow = {
 		type: "meta",
@@ -256,7 +321,8 @@ async function run(args: Args): Promise<void> {
 			keep_recent_assistant_messages: arm.seamAInstalled ? args.keepRecent : null,
 		},
 		started_at: new Date().toISOString(),
-		data_kind: "synthetic-smoke-fixture",
+		data_kind: dataKind,
+		...(workspaceProvenance ? { workspace: workspaceProvenance } : {}),
 	};
 	const summary = metrics.buildSummary({
 		arm: arm.id,
@@ -265,34 +331,52 @@ async function run(args: Args): Promise<void> {
 		provider: args.provider,
 		session_id: sessionId,
 		workspace: tempDir,
+		data_kind: dataKind,
 	});
-	const rows: MetricRow[] = [meta, ...metrics.getTurns(), summary];
+
+	// Acceptance: for a packet run, evaluate its STATIC checks against the FINAL
+	// workspace now (before cleanup) and append the machine-readable results as a
+	// dedicated `accept` row. command:-kind checks are recorded pending, never run.
+	let acceptRow: AcceptanceRow | undefined;
+	if (packetScenario) {
+		acceptRow = runAcceptance(packetScenario.acceptance, packetScenario.metadata.id, tempDir);
+	}
+
+	const rows: (MetricRow | AcceptanceRow)[] = [meta, ...metrics.getTurns(), summary, ...(acceptRow ? [acceptRow] : [])];
 
 	// Write output. Default path under results/ if --out omitted.
 	const outPath = resolveOut(args.out, arm.id, scenario.id);
 	mkdirSync(dirname(outPath), { recursive: true });
-	const body =
-		`# ecode experiments run — arm ${arm.id} (${arm.label}) — scenario ${scenario.id}\n` +
-		`# provider=${args.provider} compact-after=${args.compactAfter} keep-recent=${args.keepRecent} seam-b=${seamBInstalled}\n` +
-		`# SYNTHETIC SMOKE FIXTURE — not a real experimental workload\n` +
-		rows.map((r) => JSON.stringify(r)).join("\n") +
-		"\n";
+	const header = packetScenario
+		? `# ecode experiments run — arm ${arm.id} (${arm.label}) — packet ${packetScenario.metadata.id}\n` +
+			`# provider=${args.provider} compact-after=${args.compactAfter} keep-recent=${args.keepRecent} seam-b=${seamBInstalled}\n` +
+			`# data_kind=${dataKind}${workspaceProvenance ? ` workspace-from=${workspaceProvenance.source}` : ""}\n`
+		: `# ecode experiments run — arm ${arm.id} (${arm.label}) — scenario ${scenario.id}\n` +
+			`# provider=${args.provider} compact-after=${args.compactAfter} keep-recent=${args.keepRecent} seam-b=${seamBInstalled}\n` +
+			`# SYNTHETIC SMOKE FIXTURE — not a real experimental workload\n`;
+	const body = header + rows.map((r) => JSON.stringify(r)).join("\n") + "\n";
 	writeFileSync(outPath, body, "utf-8");
 
 	// eslint-disable-next-line no-console
 	console.log(
 		`arm ${arm.id}: ${provider.getCallCount()} provider calls, ${metrics.getTurns().length} turns, ` +
 			`projected=${summary.projected_turn_count}, native=${summary.native_compactions_observed}, ` +
-			`re_reads=${summary.total_re_reads}, compacted_path_re_reads=${summary.total_compacted_path_re_reads} -> ${outPath}`,
+			`re_reads=${summary.total_re_reads}, compacted_path_re_reads=${summary.total_compacted_path_re_reads}` +
+			(acceptRow ? `, accept=${acceptRow.static_passed}/${acceptRow.static_total} static (${acceptRow.pending_total} pending)` : "") +
+			` -> ${outPath}`,
 	);
 
 	session.dispose();
 	if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+	if (existsSync(agentDir)) rmSync(agentDir, { recursive: true, force: true });
 }
 
 function resolveOut(out: string | undefined, armId: string, scenarioId: string): string {
 	if (out) return isAbsolute(out) ? out : resolvePath(process.cwd(), out);
-	return resolvePath(process.cwd(), "results", `${scenarioId}-${armId}.jsonl`);
+	// Sanitise scenario id for the filename (packet ids like "G2-R2" are fine; a
+	// stray path/space would not be).
+	const safe = scenarioId.replace(/[^A-Za-z0-9._-]/g, "_");
+	return resolvePath(process.cwd(), "results", `${safe}-${armId}.jsonl`);
 }
 
 run(parseArgs(process.argv.slice(2))).catch((e) => {

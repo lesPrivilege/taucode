@@ -18,8 +18,17 @@ export interface Scenario {
 	description: string;
 	/** Opening user prompt that kicks off the run. */
 	prompt: string;
-	/** The scripted assistant turns, replayed in order by the mock provider. */
-	steps: ScriptedStep[];
+	/**
+	 * The scripted assistant turns, replayed in order by the mock provider.
+	 *
+	 * OPTIONAL: only the mock provider consumes `steps` (it replays them by
+	 * call-count). A scenario loaded from a real G2 packet for an autonomous
+	 * provider has NO pre-scripted turns — a real model chooses its own actions —
+	 * so packet-loaded scenarios omit this. The mock provider defaults a missing
+	 * `steps` to `[]`; that is a narrow type change, not a behaviour change for the
+	 * existing hand-written fixtures (which still set it).
+	 */
+	steps?: ScriptedStep[];
 	/**
 	 * Files the workspace should pre-create before the run (path -> content), so a
 	 * `read` in step 1 has something to read. Written under the run's temp cwd.

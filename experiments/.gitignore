@@ -6,3 +6,9 @@ node_modules
 # Generated smoke-run output (regenerable via `plan` -> `run`). These are
 # SYNTHETIC fixture runs, not committed data.
 results/
+
+# Prepared taucode snapshots (built by prepare-snapshot.ts). Large, regenerable,
+# per-packet-class; never committed. Rebuild with `prepare-snapshot.ts --name <n>`.
+snapshots/
+# Per-run workspaces copied from a snapshot (if a run is pointed here).
+workspaces/

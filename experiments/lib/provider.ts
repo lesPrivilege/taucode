@@ -108,7 +108,13 @@ function mockProvider(scenario: Scenario, opts: ProviderOptions): ExperimentProv
 		providerName: MOCK_PROVIDER,
 		api: MOCK_API,
 		modelId: MOCK_MODEL_ID,
-		steps: scenario.steps,
+		// Scenario.steps is optional (packet-loaded scenarios have none — a real
+		// model chooses its own actions). The mock is the ONLY consumer of steps;
+		// a missing script becomes an empty one (the mock then stops immediately
+		// with "no more scripted steps"), which is exactly right for the mock
+		// smoke path against a packet — the workspace/accept plumbing is what that
+		// path exercises, not model behaviour.
+		steps: scenario.steps ?? [],
 		contextWindow,
 	});
 

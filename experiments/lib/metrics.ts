@@ -87,7 +87,15 @@ export interface MetaRow {
 	};
 	started_at: string;
 	/** Marker string so smoke fixtures are never mistaken for real G2 workloads. */
-	data_kind: "synthetic-smoke-fixture";
+	data_kind: string;
+	/**
+	 * Provenance of the run's workspace. Present only when the run was seeded from
+	 * a prepared snapshot via `--workspace-from` (G1d): records exactly which
+	 * snapshot dir and content-manifest hash the workspace started from, so "all
+	 * arms started byte-identical" is an auditable field, not just a promise.
+	 * Absent for the default fresh-tmpdir + seedFiles path.
+	 */
+	workspace?: { source: string; manifestHash: string | null };
 }
 
 /** One LLM call. Numeric fields are top-level for the tolerant reader. */
@@ -153,7 +161,7 @@ export interface SummaryRow {
 	/** Whether ANY turn carried a cacheRead signal (drives null-vs-0). */
 	cache_signal_present: boolean;
 	completion: string;
-	data_kind: "synthetic-smoke-fixture";
+	data_kind: string;
 }
 
 export type MetricRow = MetaRow | TurnRow | SummaryRow;
@@ -332,6 +340,8 @@ export class RunMetrics {
 		provider: string;
 		session_id: string;
 		workspace: string;
+		/** Marker for the run's data provenance. Defaults to the smoke marker. */
+		data_kind?: string;
 	}): SummaryRow {
 		// Totals INCLUDE the native summariser's own tokens (arm B): pi's auto-
 		// compaction call is a real provider round-trip whose cost belongs to the arm.
@@ -365,7 +375,7 @@ export class RunMetrics {
 			total_cache_read_tokens: this.cacheSignalPresent ? this.cacheTotal : null,
 			cache_signal_present: this.cacheSignalPresent,
 			completion: "",
-			data_kind: "synthetic-smoke-fixture",
+			data_kind: base.data_kind ?? "synthetic-smoke-fixture",
 		};
 	}
 }

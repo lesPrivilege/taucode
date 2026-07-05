@@ -304,3 +304,58 @@ branch-summary path, not the main compaction settings.
 在**运行 cwd 的 project settings**（`<workdir>/.pi/settings.json`）里写
 `"extensions": ["<ecode>/extensions/deterministic-compaction"]`，或在被试工作目录
 `.pi/extensions/` 放 symlink。两种都不触碰 `pi/` 子树，diff=0 约束保持。
+
+---
+
+## Item 7 — `read` tool reading absolute paths OUTSIDE cwd（补录 2026-07-05，答 G1d E1/E2 悬空点）
+
+**Verdict: CONFIRMED — pi 的 `read` 工具能解析并读取 cwd 之外的绝对路径，无 cwd 沙箱。**
+E1/E2 可以在自己的 temp/snapshot workspace 里跑，同时用绝对路径读 `pi/` 源码树，**无需任何 fallback**（不用 symlink、不用改 cwd）。
+
+判定方式与 G0 其余各项一致：既读源码、又实跑一次真实 `read` 调用观察，不单凭读源码猜测。
+
+**源码侧（路径省略 `pi/` 前缀）：**
+
+- `read` 工具在执行时用 `resolveReadPathAsync(path, cwd)` 解析目标路径
+  （`packages/coding-agent/src/core/tools/read.ts:238`），随后直接
+  `ops.access(absolutePath)` + `ops.readFile(absolutePath)`（read.ts:241、249/266），
+  中间**没有**任何「absolutePath 必须落在 cwd 内」的校验。
+- `resolveReadPathAsync` → `resolveToCwd(filePath, cwd)` → `resolvePath(filePath, cwd, …)`
+  （`packages/coding-agent/src/core/tools/path-utils.ts:86-90`、`:48-50`）。
+- 关键逻辑在 `resolvePath`（`packages/coding-agent/src/utils/paths.ts:81-85`）：
+
+  ```ts
+  export function resolvePath(input, baseDir = process.cwd(), options = {}) {
+      const normalized = normalizePath(input, options);
+      const normalizedBaseDir = normalizePath(baseDir);
+      return isAbsolute(normalized) ? nodeResolvePath(normalized)                 // :84 绝对路径→独立解析
+                                    : nodeResolvePath(normalizedBaseDir, normalized);
+  }
+  ```
+
+  即：input 为绝对路径时**完全不参考 baseDir/cwd**，直接 `path.resolve(absolute)` 原样返回；
+  相对路径才拼到 cwd 上。全程无 containment guard。
+- 存在一个 inside-cwd 判定 `getCwdRelativePath`（paths.ts:87-96）——但它只被
+  `formatPathRelativeToCwdOrAbsolute`（paths.ts:98-101）等**显示格式化**路径使用，
+  与文件访问权限无关，不构成沙箱。
+
+**实证侧（真实驱动一次 read）：** 用 `experiments/lib/loader.mjs` 的同款别名 hook 从 pi 源码
+直接 `createReadToolDefinition(cwd)`，令 `cwd` = 一个空 temp 目录，对三类路径各调一次
+`tool.execute("t1", { path }, …)`：
+
+| 目标 | 结果 |
+| --- | --- |
+| pi 源文件绝对路径（cwd 之外） | **OK**，读回 14937 chars（真实文件内容，head=`import { basename, …`）|
+| cwd 之外另一 temp 里的 sentinel 绝对路径 | **OK**，读回 31 chars，内容 = 写入的 `SENTINEL_MARKER_OUTSIDE_CWD_42` |
+| 空 cwd 内的相对路径 `nonexistent-rel.ts`（对照） | **FAIL**，`ENOENT … access '<cwd>/nonexistent-rel.ts'` |
+
+对照组证明 cwd 确实指在别处（相对路径按 cwd 解析并落空），而两条绝对路径读取仍成功返回真实内容
+——绝对路径不受 cwd 约束，得到源码与实跑双向印证。（探针脚本为一次性，跑完即删，未留在树里。）
+
+**对 E1/E2 的落法：** 两个 exploration packet 的 `Read first` 均为 `pi/...` 路径，产出写自己
+workspace 内的单个 `.md`。既然 `read` 能直接吃 cwd 外的绝对路径，E1/E2 直接以绝对（或相对被试仓根、
+再由被试自行前缀）的 `pi/...` 路径读取即可，**不需要**把 `pi/` symlink 进 workspace、也**不需要**把
+E 类以 `pi/` 作 cwd 跑——原运行协议里「E packet 以 `pi/` 为只读对象、产出写自己 workspace」在
+当前 pi 语义下开箱可行，无 harness 侧改动、无 `pi/` 改动。（若未来某版 pi 收紧为 cwd-relative-only，
+届时最小修复为：在 run workspace 里放一个指向 `<ecode>/pi` 的 symlink，或仅对 E 类以 `pi/` 作 cwd
+——两者都不触碰 `pi/` 子树。此为预案，当前不需要。）
