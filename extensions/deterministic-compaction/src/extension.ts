@@ -75,12 +75,18 @@ interface GateStatus {
 	rawTokens: number | null;
 	threshold: number;
 	triggerState: "waiting" | "active" | "off" | "no_data";
+	/** tokensSaved from the most recent compacting projection; null until first real trigger. */
+	lastSavedTokens: number | null;
+	/** effectiveSavedPct from the most recent compacting projection; null until first real trigger. */
+	lastSavedPct: number | null;
 }
 
 const gateStatus: GateStatus = {
 	rawTokens: null,
 	threshold: DEFAULT_COMPACT_AFTER_INPUT_TOKENS,
 	triggerState: "no_data",
+	lastSavedTokens: null,
+	lastSavedPct: null,
 };
 
 let gateWidgetRegistered = false;
@@ -274,9 +280,11 @@ export function installDeterministicCompaction(
 							return ["⟨compaction⟩ gate — / — compactable · —"];
 						}
 						const fmt = (n: number): string => n.toLocaleString();
-						return [
-							`⟨compaction⟩ gate ${fmt(rawTokens)} / ${fmt(threshold)} compactable · ${triggerState}`,
-						];
+						let line = `⟨compaction⟩ gate ${fmt(rawTokens)} / ${fmt(threshold)} compactable · ${triggerState}`;
+						if (gateStatus.lastSavedTokens !== null) {
+							line += ` · last −${fmt(gateStatus.lastSavedTokens)} (${gateStatus.lastSavedPct}%)`;
+						}
+						return [line];
 					},
 					get height(): number {
 						return 1;
@@ -308,6 +316,15 @@ export function installDeterministicCompaction(
 		gateStatus.rawTokens = outcome.rawTokens;
 		gateStatus.threshold = config.compactAfterInputTokens;
 		gateStatus.triggerState = outcome.projected ? "active" : "waiting";
+
+		// Track last projection savings (null until the first real trigger).
+		if (outcome.projected && outcome.compaction) {
+			gateStatus.lastSavedTokens = outcome.compaction.tokensSaved;
+			gateStatus.lastSavedPct =
+				outcome.rawTokens > 0
+					? Math.round((outcome.compaction.tokensSaved / outcome.rawTokens) * 100)
+					: 0;
+		}
 
 		// Ambient: record the OUTGOING payload's estimated tokens (post-projection
 		// when projected, raw otherwise) and whether we projected this turn.
