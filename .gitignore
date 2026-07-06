@@ -4,3 +4,4 @@ pi/
 .DS_Store
 .claude/settings.local.json
 .ecode-agent/
+*.swp
