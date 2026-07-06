@@ -338,6 +338,18 @@ describe("formatTriggerMarkerLine (S2)", () => {
 		});
 		expect(line).toContain("gate 500/400");
 	});
+
+	it("can include WS-4 policy records without changing the base marker shape", () => {
+		const line = formatTriggerMarkerLine({
+			turn: 2,
+			compactedCount: 1,
+			effectiveTokensSaved: 100,
+			rawTokens: 500,
+			compactAfterInputTokens: 400,
+			policyEvents: ["substitute:summary:s1:src/a.ts#h1"],
+		});
+		expect(line).toContain("policy substitute:summary:s1:src/a.ts#h1");
+	});
 });
 
 // --- S5: formatDash pure-function tests ---

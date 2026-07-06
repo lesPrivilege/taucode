@@ -1,5 +1,11 @@
 import type { Message } from "./compaction-core.js";
-import { hashContent, type TrustLedger } from "./trust-ledger.js";
+import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+import { type LedgerEntry } from "./semantic-ledger.js";
+import { hashContent } from "./trust-ledger.js";
+
+export interface TrustHintLedger {
+	get(path: string): LedgerEntry | undefined;
+}
 
 function readPathFromArgs(args: unknown): string | undefined {
 	if (typeof args === "object" && args !== null && "path" in args) {
@@ -21,7 +27,7 @@ function readPathFromArgs(args: unknown): string | undefined {
  * Pure and side-effect free: returns the lines; the caller places them in the
  * volatile send-time tail (never in the session, never breaking the prefix).
  */
-export function staleViewHints(messages: Message[], ledger: TrustLedger): string[] {
+export function staleViewHints(messages: Message[], ledger: TrustHintLedger): string[] {
 	const readCallPath = new Map<string, string>();
 	for (const m of messages) {
 		if (m.role === "assistant" && m.toolCalls) {
@@ -73,11 +79,12 @@ export function renderHintIndicator(state: HintIndicatorState): string[] {
 let hintWidgetRegistered = false;
 
 export function registerHintWidget(
-	ui: { setWidget: (id: string, factory: () => { render: () => string[]; height: number }) => void },
+	ui: { setWidget: ExtensionUIContext["setWidget"] },
 ): void {
 	if (hintWidgetRegistered) return;
 	ui.setWidget("compaction-trust", () => ({
 		render: () => renderHintIndicator(hintIndicator),
+		invalidate: () => {},
 		get height() { return hintIndicator.hints.length > 0 ? 1 : 0; },
 	}));
 	hintWidgetRegistered = true;

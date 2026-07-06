@@ -25,8 +25,8 @@
  * messages (output/usage) and native-compaction firings.
  */
 
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, resolve as resolvePath } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
@@ -45,15 +45,17 @@ import {
 	installDeterministicCompaction,
 	projectContext,
 	type ProjectionConfig,
+	type TailEvidence,
+	type TaxProbeTurn,
 } from "./lib/compaction-core-adapter.js";
-import { ARMS, isArmId, DEFAULT_COMPACT_AFTER_INPUT_TOKENS, DEFAULT_KEEP_RECENT_ASSISTANT_MESSAGES } from "./lib/arms.js";
+import { resolveArmSpec, DEFAULT_COMPACT_AFTER_INPUT_TOKENS, DEFAULT_KEEP_RECENT_ASSISTANT_MESSAGES } from "./lib/arms.js";
 import { getScenario } from "./fixtures/index.js";
-import { isPacketSpec, loadPacket, type PacketScenario } from "./lib/packet.js";
+import { isPacketSpec, loadPacket, type AcceptanceCheck, type FileExistsCheck, type PacketScenario } from "./lib/packet.js";
 import type { Scenario } from "./lib/scenario.js";
 import { runAcceptance, type AcceptanceRow } from "./lib/acceptance.js";
 import { exportRunArtifacts, type ArtifactManifest } from "./lib/artifacts.js";
 import { copyWorkspaceFrom } from "./lib/workspace.js";
-import { resolveProvider, DEFAULT_PROVIDER } from "./lib/provider.js";
+import { createSidebandSummarizer, resolveProvider, DEFAULT_PROVIDER } from "./lib/provider.js";
 import { RunMetrics, type MetaRow, type MetricRow } from "./lib/metrics.js";
 
 const SCHEMA_VERSION = 1;
@@ -112,6 +114,11 @@ function parseArgs(argv: string[]): Args {
 	};
 }
 
+function envBool(name: string): boolean {
+	const raw = (process.env[name] ?? "").trim().toLowerCase();
+	return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
 // --- scenario resolution: fixture id OR packet spec -----------------------------
 
 // Repo root anchored to run.ts's own location (experiments/run.ts -> repo root is
@@ -135,6 +142,10 @@ function isPacketScenario(s: Scenario | PacketScenario): s is PacketScenario {
 	return Array.isArray((s as PacketScenario).acceptance);
 }
 
+function isFileExistsCheck(check: AcceptanceCheck): check is FileExistsCheck {
+	return check.kind === "file-exists";
+}
+
 // --- extract compacted read paths from a projection outcome ---------------
 
 /**
@@ -156,14 +167,23 @@ function compactedReadPaths(messages: { role: string; meta?: Record<string, unkn
 // --- the run --------------------------------------------------------------
 
 async function run(args: Args): Promise<void> {
-	if (!isArmId(args.arm)) throw new Error(`Unknown arm "${args.arm}". Use A, B, C, or D.`);
-	const arm = ARMS[args.arm];
+	const armSpec = resolveArmSpec(args.arm);
+	const arm = armSpec.base;
 	const scenario = resolveScenario(args.scenario, args.packetsDoc);
 	const packetScenario = isPacketScenario(scenario) ? scenario : null;
+	const extensionFlags = {
+		semanticAnchor: armSpec.flags.semanticAnchor || envBool("ECODE_SEMANTIC_ANCHOR"),
+		workSemanticsDeclaration: armSpec.flags.workSemanticsDeclaration || envBool("ECODE_WS_DECLARATION"),
+		sidebandSummary: armSpec.flags.sidebandSummary || envBool("ECODE_SIDEBAND_SUMMARY"),
+		workSemanticsPolicy: armSpec.flags.workSemanticsPolicy || envBool("ECODE_WS_POLICY"),
+		placeboTokenMatching: armSpec.flags.placeboTokenMatching || envBool("ECODE_WS_PLACEBO"),
+		compactNudgeTail: armSpec.flags.compactNudgeTail || envBool("ECODE_WS_NUDGE"),
+	};
+	const declareNudge = (process.env.ECODE_WS_DECLARE_NUDGE ?? "").trim().toLowerCase() === "every-turn" ? "every-turn" : "off";
 	const anchorAcceptBefore = process.env.ECODE_ANCHOR_ACCEPTANCE;
-	if (packetScenario && process.env.ECODE_SEMANTIC_ANCHOR) {
+	if (packetScenario && extensionFlags.semanticAnchor) {
 		const targets = packetScenario.acceptance
-			.filter((check) => check.kind === "file-exists" && "path" in check)
+			.filter(isFileExistsCheck)
 			.map((check) => check.path)
 			.filter(Boolean);
 		if (targets.length > 0) process.env.ECODE_ANCHOR_ACCEPTANCE = targets.join(",");
@@ -186,7 +206,7 @@ async function run(args: Args): Promise<void> {
 	//   (--workspace-from) copy a prepared snapshot's workspace/ in (cheap, per-run),
 	//             recording {source, manifestHash} for provenance. run.ts does ONLY
 	//             this cheap copy; building the snapshot is prepare-snapshot.ts's job.
-	const tempDir = join(tmpdir(), `pi-ecode-run-${arm.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+	const tempDir = join(tmpdir(), `pi-ecode-run-${safeName(armSpec.id)}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	let workspaceProvenance: { source: string; manifestHash: string | null } | undefined;
 	if (args.workspaceFrom) {
 		const copied = copyWorkspaceFrom(args.workspaceFrom, tempDir);
@@ -208,6 +228,11 @@ async function run(args: Args): Promise<void> {
 	mkdirSync(agentDir, { recursive: true });
 
 	const metrics = new RunMetrics();
+	const plannedOutPath = resolveOut(args.out, armSpec.id, scenario.id);
+	const taxProbeWrite = (row: TaxProbeTurn): string => appendExperimentTaxProbeRow(row, plannedOutPath);
+	const recordTailEvidence = (evidence: TailEvidence): void => metrics.noteTailEvidence(evidence);
+	const pendingSidebandTasks: Promise<void>[] = [];
+	const sidebandSummarizer = extensionFlags.sidebandSummary ? createSidebandSummarizer(provider) : undefined;
 
 	// Extension factory: register provider, install the arm's real hook(s), and
 	// ALWAYS install the observer hook (records metrics; never mutates payload).
@@ -254,6 +279,25 @@ async function run(args: Args): Promise<void> {
 				compactAfterInputTokens: args.compactAfter,
 				compactionOptions: { keepRecentAssistantMessages: args.keepRecent },
 				seamBEnabled: seamBInstalled,
+				semanticAnchorEnabled: extensionFlags.semanticAnchor,
+				workSemanticsDeclarationEnabled: extensionFlags.workSemanticsDeclaration,
+				sidebandSummaryEnabled: extensionFlags.sidebandSummary,
+				workSemanticsPolicyEnabled: extensionFlags.workSemanticsPolicy,
+				placeboTailEnabled: extensionFlags.placeboTokenMatching,
+				compactNudgeTailEnabled: extensionFlags.compactNudgeTail,
+				workSemanticsDeclareNudge: declareNudge,
+			}, {
+				sideband: {
+					summarize: sidebandSummarizer,
+					onSummary: (record) => metrics.recordSideband(record),
+					onTask: (task) => pendingSidebandTasks.push(task),
+				},
+				taxProbe: {
+					write: (row) => taxProbeWrite(row),
+				},
+				tailEvidence: {
+					record: recordTailEvidence,
+				},
 			});
 		}
 	};
@@ -315,6 +359,9 @@ async function run(args: Args): Promise<void> {
 	await session.bindExtensions({});
 	await session.prompt(scenario.prompt);
 	await session.agent.waitForIdle();
+	if (pendingSidebandTasks.length > 0) {
+		await Promise.allSettled(pendingSidebandTasks);
+	}
 
 	// Fold in the native summariser's own token cost (arm B). Zero for A/C/D.
 	const summ = provider.getSummarizerTokens();
@@ -336,8 +383,8 @@ async function run(args: Args): Promise<void> {
 	const meta: MetaRow = {
 		type: "meta",
 		schema_version: SCHEMA_VERSION,
-		arm: arm.id,
-		arm_label: arm.label,
+		arm: armSpec.id,
+		arm_label: armSpec.label,
 		scenario: scenario.id,
 		provider: args.provider,
 		mechanism: {
@@ -348,14 +395,24 @@ async function run(args: Args): Promise<void> {
 			keep_recent_assistant_messages: arm.seamAInstalled ? args.keepRecent : null,
 			provider_context_window: Number.isFinite(args.contextWindow) ? args.contextWindow : null,
 			anchor_acceptance_targets: process.env.ECODE_ANCHOR_ACCEPTANCE ?? null,
+			extension_flags: {
+				semantic_anchor: extensionFlags.semanticAnchor,
+				ws_declaration: extensionFlags.workSemanticsDeclaration,
+				sideband_summary: extensionFlags.sidebandSummary,
+				ws_policy: extensionFlags.workSemanticsPolicy,
+				placebo_token_matching: extensionFlags.placeboTokenMatching,
+				compact_nudge_tail: extensionFlags.compactNudgeTail,
+			},
+			placebo_tail_target_tokens: extensionFlags.placeboTokenMatching ? 120 : null,
+			ws_declare_nudge: declareNudge,
 		},
 		started_at: new Date().toISOString(),
 		data_kind: dataKind,
 		...(workspaceProvenance ? { workspace: workspaceProvenance } : {}),
 	};
 	const summary = metrics.buildSummary({
-		arm: arm.id,
-		arm_label: arm.label,
+		arm: armSpec.id,
+		arm_label: armSpec.label,
 		scenario: scenario.id,
 		provider: args.provider,
 		session_id: sessionId,
@@ -372,7 +429,7 @@ async function run(args: Args): Promise<void> {
 	}
 
 	// Write output. Default path under results/ if --out omitted.
-	const outPath = resolveOut(args.out, arm.id, scenario.id);
+	const outPath = plannedOutPath;
 	mkdirSync(dirname(outPath), { recursive: true });
 
 	const artifactRow: ArtifactManifest = exportRunArtifacts({
@@ -386,16 +443,17 @@ async function run(args: Args): Promise<void> {
 	const rows: (MetricRow | AcceptanceRow | ArtifactManifest)[] = [
 		meta,
 		...metrics.getTurns(),
+		...metrics.getSidebandRows(),
 		summary,
 		...(acceptRow ? [acceptRow] : []),
 		artifactRow,
 	];
 
 	const header = packetScenario
-		? `# ecode experiments run — arm ${arm.id} (${arm.label}) — packet ${packetScenario.metadata.id}\n` +
+		? `# ecode experiments run — arm ${armSpec.id} (${armSpec.label}) — packet ${packetScenario.metadata.id}\n` +
 			`# provider=${args.provider} compact-after=${args.compactAfter} keep-recent=${args.keepRecent} seam-b=${seamBInstalled}\n` +
 			`# data_kind=${dataKind}${workspaceProvenance ? ` workspace-from=${workspaceProvenance.source}` : ""}\n`
-		: `# ecode experiments run — arm ${arm.id} (${arm.label}) — scenario ${scenario.id}\n` +
+		: `# ecode experiments run — arm ${armSpec.id} (${armSpec.label}) — scenario ${scenario.id}\n` +
 			`# provider=${args.provider} compact-after=${args.compactAfter} keep-recent=${args.keepRecent} seam-b=${seamBInstalled}\n` +
 			`# SYNTHETIC SMOKE FIXTURE — not a real experimental workload\n`;
 	const body = header + rows.map((r) => JSON.stringify(r)).join("\n") + "\n";
@@ -403,7 +461,7 @@ async function run(args: Args): Promise<void> {
 
 	// eslint-disable-next-line no-console
 	console.log(
-		`arm ${arm.id}: ${provider.getCallCount()} provider calls, ${metrics.getTurns().length} turns, ` +
+		`arm ${armSpec.id}: ${provider.getCallCount()} provider calls, ${metrics.getTurns().length} turns, ` +
 			`projected=${summary.projected_turn_count}, native=${summary.native_compactions_observed}, ` +
 			`re_reads=${summary.total_re_reads}, compacted_path_re_reads=${summary.total_compacted_path_re_reads}` +
 			(acceptRow ? `, accept=${acceptRow.static_passed}/${acceptRow.static_total} static (${acceptRow.pending_total} pending)` : "") +
@@ -422,7 +480,20 @@ function resolveOut(out: string | undefined, armId: string, scenarioId: string):
 	// Sanitise scenario id for the filename (packet ids like "G2-R2" are fine; a
 	// stray path/space would not be).
 	const safe = scenarioId.replace(/[^A-Za-z0-9._-]/g, "_");
-	return resolvePath(process.cwd(), "results", `${safe}-${armId}.jsonl`);
+	return resolvePath(process.cwd(), "results", `${safe}-${safeName(armId)}.jsonl`);
+}
+
+function safeName(value: string): string {
+	return value.replace(/[^A-Za-z0-9._-]/g, "_");
+}
+
+function appendExperimentTaxProbeRow(row: TaxProbeTurn, outPath: string): string {
+	const dir = join(dirname(outPath), ".ws-tax-probe");
+	mkdirSync(dir, { recursive: true });
+	const stem = basename(outPath).replace(/\.jsonl$/, "");
+	const file = join(dir, `${stem}.jsonl`);
+	appendFileSync(file, `${JSON.stringify(row)}\n`, "utf-8");
+	return file;
 }
 
 run(parseArgs(process.argv.slice(2))).catch((e) => {

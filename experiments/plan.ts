@@ -19,6 +19,10 @@ const ARM_LABELS: Record<string, string> = {
 	B: "native-on / no-hook (pi default summariser)",
 	C: "seam-A hook / seam-B off",
 	D: "seam-A hook + seam-B checkpoint",
+	"C-SB": "seam-A hook + sideband summaries + WS policy",
+	"C+PL": "seam-A hook + placebo token-matching control",
+	"C+N": "seam-A hook + compact nudge tail",
+	"C'''-capture": "seam-A hook + in-band declaration capture",
 };
 
 const SWEEP_ALLOWED = [4000, 16000, 32000, 64000];
@@ -108,7 +112,7 @@ function main() {
 	for (const arm of args.arms) {
 		const label = ARM_LABELS[arm] ?? "unknown arm";
 		if (!ARM_LABELS[arm]) {
-			lines.push(`# WARNING: unknown arm "${arm}" (expected A, B, C, or D) — skipped`);
+			lines.push(`# WARNING: unknown arm "${arm}" (expected A, B, C, D, C-SB, C+PL, C+N, or C'''-capture) — skipped`);
 			continue;
 		}
 		const out = outPath(args.outDir, args.scenario, arm);

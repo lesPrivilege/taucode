@@ -1,5 +1,9 @@
 # Note — compaction 方案 landscape 与 ecode 定位
 
+> 2026-07-06 更新：R2 已跑完，带结果的新版调研见
+> `docs/reports/compaction-strategy-research-2026-07-06.md`。本文保留为
+> R2 前 landscape / 定位草案，供追踪判断演化。
+
 2026-07-05。来源:操作者口述归纳,**已经 Grok 实时检索逐条核证**
 (见文末核证结果,官方文档级引用可直接外发;第三方逆向类须标注
 事实等级)。用途:论文对比节 + 发布叙事的定位依据。

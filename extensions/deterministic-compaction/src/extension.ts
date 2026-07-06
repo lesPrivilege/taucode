@@ -66,15 +66,49 @@ import {
 	type TuningTelemetry,
 } from "./tuning.js";
 import { toCore } from "./adapter.js";
-import { TrustLedger, hashContent, parseDiffstat } from "./trust-ledger.js";
 import { hintIndicator, registerHintWidget, staleViewHints, staleHintMessage } from "./trust-hint.js";
-import { WorkAnchor, renderAnchorBlock, anchorTailMessage, parseTestResult } from "./anchor.js";
-import { readFileSync } from "node:fs";
-import { resolve as pathResolve } from "node:path";
+import { renderAnchorBlock, anchorTailMessage } from "./anchor.js";
+import { recordSemanticToolResult } from "./semantic-events.js";
+import { SemanticLedger } from "./semantic-ledger.js";
+import { registerWorkSemanticsDeclarationTool } from "./work-semantics-declaration.js";
+import {
+	scheduleSidebandSummaries,
+	type SidebandSummarizer,
+} from "./sideband-summary.js";
+import {
+	LedgerPersistSink,
+	persistableFromSemanticEvent,
+	type PersistableLedgerRecord,
+} from "./ledger-persistence.js";
+import {
+	TaxProbeCollector,
+	appendTaxProbeRow,
+	nudgeTailMessage,
+	type DeclareNudgeMode,
+	type TaxProbeWriter,
+} from "./tax-probe.js";
+import {
+	applyFormSubstitutions,
+	buildProjectionPolicy,
+	type ProjectionPolicyConfig,
+} from "./projection-policy.js";
+import {
+	compactNudgeTailMessage,
+	DEFAULT_PLACEBO_TARGET_TOKENS,
+	placeboTailMessage,
+} from "./placebo-tail.js";
+import {
+	evidenceBlock,
+	hashText,
+	type TailEvidence,
+	type TailEvidenceBlock,
+} from "./tail-evidence.js";
 
 const DEFAULT_COMPACT_AFTER_INPUT_TOKENS = 32000;
 const DEFAULT_KEEP_RECENT_ASSISTANT_MSGS = 3;
-
+const DEFAULT_SIDEBAND_MIN_TOKENS = 2000;
+const DEFAULT_SIDEBAND_MODEL = "sideband-summary";
+const DEFAULT_WS_VERBATIM_WINDOW = 8;
 
 function readNumberEnv(name: string, fallback: number): number {
 	const raw = process.env[name];
@@ -120,6 +154,50 @@ export interface DeterministicCompactionConfig extends ProjectionConfig {
 	 * per-packet from its file-exists acceptance checks (out-of-fence integration).
 	 */
 	anchorAcceptanceTargets?: string[];
+	/**
+	 * WS-2 declaration capture flag (env ECODE_WS_DECLARATION). Default OFF.
+	 * Registers the declare_work_semantics tool and records model-authored
+	 * retention declarations in the semantic ledger. Capture-only: no projection
+	 * policy effect.
+	 */
+	workSemanticsDeclarationEnabled?: boolean;
+	/**
+	 * WS-3 sideband summarizer flag (env ECODE_SIDEBAND_SUMMARY). Default OFF.
+	 * Capture-only: schedules an async summary write into the semantic ledger when
+	 * a read view is compacted; does not alter projection output.
+	 */
+	sidebandSummaryEnabled?: boolean;
+	sidebandSummaryMinTokens?: number;
+	sidebandSummaryModel?: string;
+	/**
+	 * WS-5 persistent ledger sink (env ECODE_LEDGER_PERSIST). Default OFF.
+	 * Write-only append JSONL under .ecode/ledger/. No read-back path.
+	 */
+	ledgerPersistEnabled?: boolean;
+	/**
+	 * WS-2.5 declaration tax probe (env ECODE_WS_DECLARE_NUDGE=every-turn).
+	 * Measurement-only: nudges the model to declare every turn and logs provider
+	 * output/reasoning usage. Never use in experiment arms.
+	 */
+	workSemanticsDeclareNudge?: DeclareNudgeMode;
+	/**
+	 * WS-4 projection policy (env ECODE_WS_POLICY). Default OFF. When enabled,
+	 * verified ledger semantics may protect bounded verbatim paths and substitute
+	 * compacted read summaries by form only.
+	 */
+	workSemanticsPolicyEnabled?: boolean;
+	workSemanticsVerbatimWindow?: number;
+	/**
+	 * EXP-WS placebo control (env ECODE_WS_PLACEBO). Default OFF. Appends a fixed,
+	 * token-targeted reminder on projected turns; carries no work semantics.
+	 */
+	placeboTailEnabled?: boolean;
+	placeboTailTargetTokens?: number;
+	/**
+	 * Branch C compact nudge (env ECODE_WS_NUDGE). Default OFF. Appends a fixed
+	 * short orientation cue on projected turns only; carries no work semantics.
+	 */
+	compactNudgeTailEnabled?: boolean;
 }
 
 export function resolveConfig(): DeterministicCompactionConfig {
@@ -136,6 +214,18 @@ export function resolveConfig(): DeterministicCompactionConfig {
 		trustProtocolEnabled: readBoolEnv("ECODE_TRUST_PROTOCOL"),
 		semanticAnchorEnabled: readBoolEnv("ECODE_SEMANTIC_ANCHOR"),
 		anchorAcceptanceTargets: readListEnv("ECODE_ANCHOR_ACCEPTANCE"),
+		workSemanticsDeclarationEnabled: readBoolEnv("ECODE_WS_DECLARATION"),
+		sidebandSummaryEnabled: readBoolEnv("ECODE_SIDEBAND_SUMMARY"),
+		sidebandSummaryMinTokens: readNumberEnv("ECODE_SIDEBAND_MIN_TOKENS", DEFAULT_SIDEBAND_MIN_TOKENS),
+		sidebandSummaryModel: process.env.ECODE_SIDEBAND_MODEL?.trim() || DEFAULT_SIDEBAND_MODEL,
+		ledgerPersistEnabled: readBoolEnv("ECODE_LEDGER_PERSIST"),
+		workSemanticsDeclareNudge:
+			(process.env.ECODE_WS_DECLARE_NUDGE ?? "").trim().toLowerCase() === "every-turn" ? "every-turn" : "off",
+		workSemanticsPolicyEnabled: readBoolEnv("ECODE_WS_POLICY"),
+		workSemanticsVerbatimWindow: readNumberEnv("ECODE_WS_VERBATIM_WINDOW", DEFAULT_WS_VERBATIM_WINDOW),
+		placeboTailEnabled: readBoolEnv("ECODE_WS_PLACEBO"),
+		placeboTailTargetTokens: readNumberEnv("ECODE_WS_PLACEBO_TOKENS", DEFAULT_PLACEBO_TARGET_TOKENS),
+		compactNudgeTailEnabled: readBoolEnv("ECODE_WS_NUDGE"),
 	};
 }
 
@@ -180,6 +270,17 @@ export interface InstallOptions {
 		persist?: boolean;
 		/** Override the persistence target dir name (defaults to ".pi"). */
 		configDirName?: string;
+	};
+	sideband?: {
+		summarize?: SidebandSummarizer;
+		onSummary?: (record: Parameters<SemanticLedger["recordSummary"]>[0]) => void;
+		onTask?: (task: Promise<void>) => void;
+	};
+	taxProbe?: {
+		write?: TaxProbeWriter;
+	};
+	tailEvidence?: {
+		record?: (evidence: TailEvidence) => void;
 	};
 }
 
@@ -229,15 +330,37 @@ export function installDeterministicCompaction(
 ): InstalledHandle {
 	const observabilityState: ObservabilityState = { config, turnCounter: 0 };
 
-	// V2-TP task 1 — session view ledger. Populated by wiring (read/edit events);
-	// read by the seam-A hook to detect stale views. Only consulted when the
-	// ECODE_TRUST_PROTOCOL flag is on, so flag-off leaves the send payload v1.
-	const ledger = new TrustLedger();
+	// WS-1 — unified semantic ledger. Populated by wiring (read/edit/test events);
+	// read by stale-view hints and work-anchor rendering. Only allocated when one
+	// of the two semantic features is on, preserving flag-off byte identity.
+	const semanticLedgerEnabled =
+		config.trustProtocolEnabled ||
+		config.semanticAnchorEnabled ||
+		config.workSemanticsDeclarationEnabled ||
+		config.sidebandSummaryEnabled ||
+		config.ledgerPersistEnabled ||
+		config.workSemanticsPolicyEnabled;
+	const ledger = semanticLedgerEnabled ? new SemanticLedger() : undefined;
+	const persistSinks = new Map<string, LedgerPersistSink>();
+	const persistRecord = (ctx: ExtensionContext, record: PersistableLedgerRecord): void => {
+		if (!config.ledgerPersistEnabled) return;
+		const cwd = ctx.sessionManager.getCwd() ?? process.cwd();
+		const sessionId = ctx.sessionManager.getSessionId();
+		const key = `${cwd}\0${sessionId}`;
+		let sink = persistSinks.get(key);
+		if (!sink) {
+			sink = new LedgerPersistSink(cwd, sessionId);
+			persistSinks.set(key, sink);
+		}
+		sink.append(record);
+	};
+	const taxProbe = config.workSemanticsDeclareNudge === "every-turn" ? new TaxProbeCollector() : undefined;
 
-	// V3-WS task 1 — work-semantic anchor. Fed by the SAME tool_result wiring as the
-	// ledger (reusing its hash/diffstat), read by the seam-A hook to inject a
-	// re-orientation block on projected turns. Only touched under ECODE_SEMANTIC_ANCHOR.
-	const anchor = new WorkAnchor();
+	if (config.workSemanticsDeclarationEnabled && ledger && typeof (pi as { registerTool?: unknown }).registerTool === "function") {
+		registerWorkSemanticsDeclarationTool(pi, ledger, () => observabilityState.turnCounter, (record, ctx) => {
+			persistRecord(ctx, record);
+		});
+	}
 
 	// --- V2-TP task 1+2: ledger wiring via tool_result events --------------------
 	// Populates the ledger (V2-TP) and/or the work anchor (V3-WS) as tools execute.
@@ -246,68 +369,24 @@ export function installDeterministicCompaction(
 	// The listener is registered under EITHER flag; each recorder is individually
 	// gated, so flag-off runs never allocate hashes or touch either structure, and
 	// the trust-on/anchor-off path stays byte-identical to v1.
-	if (config.trustProtocolEnabled || config.semanticAnchorEnabled) {
+	if (semanticLedgerEnabled) {
 		pi.on("tool_result", (event, ctx) => {
-			const turn = observabilityState.turnCounter;
-			const input = event.input as Record<string, unknown>;
-
-			// V3-WS: bash → test-run detection. Runs BEFORE the generic isError
-			// short-circuit because a failing test run (non-zero exit) is a fact worth
-			// anchoring, recorded honestly as a failure.
-			if (config.semanticAnchorEnabled && event.toolName === "bash") {
-				const command = typeof input.command === "string" ? input.command : "";
-				const output = event.content
-					.filter((b): b is { type: "text"; text: string } => b.type === "text")
-					.map((b) => b.text)
-					.join("\n");
-				const rec = parseTestResult(command, output, event.isError);
-				if (rec) anchor.recordTest(rec.command, rec.result, turn);
-				return;
-			}
-
-			const path = typeof input.path === "string" ? input.path : undefined;
-
-			// V3-WS: a failed edit/write is recorded honestly (the V2-TP ledger only
-			// records successes — evidence must reflect a real disk change).
-			if (event.isError) {
-				if (config.semanticAnchorEnabled && path && (event.toolName === "edit" || event.toolName === "write")) {
-					anchor.recordEditFailure(path, turn);
-				}
-				return;
-			}
-
-			if (!path) return;
-
-			if (event.toolName === "read") {
-				const text = event.content
-					.filter((b): b is { type: "text"; text: string } => b.type === "text")
-					.map((b) => b.text)
-					.join("\n");
-				if (text) {
-					if (config.trustProtocolEnabled) ledger.recordView(path, text, turn);
-					if (config.semanticAnchorEnabled) anchor.recordRead(path, hashContent(text), turn);
-				}
-			} else if (event.toolName === "edit") {
-				const cwd = ctx.sessionManager.getCwd() ?? process.cwd();
-				const abs = pathResolve(cwd, path);
-				try {
-					const disk = readFileSync(abs, "utf-8");
-					const diffstat = event.details?.patch
-						? parseDiffstat(event.details.patch)
-						: "edited";
-					if (config.trustProtocolEnabled) ledger.recordEdit(path, disk, turn, diffstat);
-					if (config.semanticAnchorEnabled) anchor.recordEdit(path, hashContent(disk), diffstat, turn);
-				} catch {
-					// File disappeared between tool write and event — skip.
-				}
-			} else if (event.toolName === "write") {
-				const content = typeof input.content === "string" ? input.content : undefined;
-				if (content) {
-					const lines = content.split("\n").length;
-					if (config.trustProtocolEnabled) ledger.recordEdit(path, content, turn, `+${lines}`);
-					if (config.semanticAnchorEnabled) anchor.recordEdit(path, hashContent(content), `+${lines}`, turn);
-				}
-			}
+			if (!ledger) return;
+			recordSemanticToolResult(
+				event,
+				{
+					turn: observabilityState.turnCounter,
+					semanticAnchorEnabled: config.semanticAnchorEnabled ?? false,
+					getCwd: () => ctx.sessionManager.getCwd() ?? process.cwd(),
+				},
+				{
+					recordFactsEnabled: semanticLedgerEnabled ?? false,
+					trustProtocolEnabled: config.trustProtocolEnabled ?? false,
+					semanticAnchorEnabled: config.semanticAnchorEnabled ?? false,
+					ledger,
+					onRecord: (semanticEvent) => persistRecord(ctx, persistableFromSemanticEvent(semanticEvent)),
+				},
+			);
 		});
 	}
 
@@ -405,7 +484,35 @@ export function installDeterministicCompaction(
 			return;
 		}
 
-		const outcome = projectContext(event.messages as AgentMessage[], config);
+		const policyConfig: ProjectionPolicyConfig = {
+			enabled: config.workSemanticsPolicyEnabled ?? false,
+			verbatimWindow: config.workSemanticsVerbatimWindow ?? DEFAULT_WS_VERBATIM_WINDOW,
+		};
+		const policy = buildProjectionPolicy(ledger, turn, policyConfig);
+		const projectionConfig =
+			policy.protectPaths.size > 0
+				? {
+						...config,
+						compactionInjection: {
+							...config.compactionInjection,
+							protectedPaths: policy.protectPaths,
+						},
+					}
+				: config;
+		let outcome = projectContext(event.messages as AgentMessage[], projectionConfig);
+			let substitutionEvidence: TailEvidenceBlock | undefined;
+			if (outcome.projected && outcome.compaction && policy.formSubstitutions.size > 0) {
+				const messages = applyFormSubstitutions(outcome.messages, outcome.compaction.diffs, policy.formSubstitutions);
+				if (messages !== outcome.messages) {
+					outcome = { ...outcome, messages };
+					substitutionEvidence = evidenceBlock(
+						"substitution",
+						[...policy.formSubstitutions.values()]
+							.map((subst) => `${subst.source}:${subst.recordId}:${subst.path}#${subst.hash}`)
+							.join("\n"),
+					);
+				}
+			}
 
 		// Update gate status from projection outcome.
 		gateStatus.rawTokens = outcome.rawTokens;
@@ -420,6 +527,22 @@ export function installDeterministicCompaction(
 				outcome.rawTokens > 0
 					? Math.round((outcome.compaction.tokensSaved / outcome.rawTokens) * 100)
 					: 0;
+			if (config.sidebandSummaryEnabled && ledger) {
+				scheduleSidebandSummaries({
+					messages: event.messages as AgentMessage[],
+					diffs: outcome.compaction.diffs,
+					ledger,
+					turn,
+					minTokens: config.sidebandSummaryMinTokens ?? DEFAULT_SIDEBAND_MIN_TOKENS,
+					model: config.sidebandSummaryModel ?? DEFAULT_SIDEBAND_MODEL,
+					summarize: options.sideband?.summarize,
+					onSummary: (record) => {
+						persistRecord(ctx, record);
+						options.sideband?.onSummary?.(record);
+					},
+					onTask: options.sideband?.onTask,
+				});
+			}
 		}
 
 		// Ambient: record the OUTGOING payload's estimated tokens (post-projection
@@ -435,13 +558,19 @@ export function installDeterministicCompaction(
 		// Empty when the flag is off (short-circuit: no toCore pass, no allocation),
 		// so both returns below stay byte-identical to v1 (baseline discipline).
 		const staleHints = config.trustProtocolEnabled
-			? staleViewHints(toCore(event.messages as AgentMessage[]).coreMessages, ledger)
+			? staleViewHints(toCore(event.messages as AgentMessage[]).coreMessages, ledger!)
 			: [];
 
 		// S4: update the hint indicator (widget reads from this).
 		hintIndicator.turn = turn;
 		hintIndicator.hints = staleHints;
 		if (staleHints.length > 0) dashState.hintCount += staleHints.length;
+
+		const nudgeTail = config.workSemanticsDeclareNudge === "every-turn" ? nudgeTailMessage() : undefined;
+		const placeboTail = config.placeboTailEnabled
+			? placeboTailMessage(config.placeboTailTargetTokens ?? DEFAULT_PLACEBO_TARGET_TOKENS)
+			: undefined;
+		const compactNudgeTail = config.compactNudgeTailEnabled ? compactNudgeTailMessage() : undefined;
 
 		if (!outcome.projected) {
 			if (staleHints.length > 0) {
@@ -451,9 +580,11 @@ export function installDeterministicCompaction(
 					messages: [
 						...(event.messages as AgentMessage[]),
 						staleHintMessage(staleHints) as unknown as AgentMessage,
+						...(nudgeTail ? [nudgeTail as unknown as AgentMessage] : []),
 					],
 				};
 			}
+			if (nudgeTail) return { messages: [...(event.messages as AgentMessage[]), nudgeTail as unknown as AgentMessage] };
 			// Identity: return undefined so pi keeps the original messages and the
 			// prompt prefix stays byte-stable for provider caching.
 			return;
@@ -470,6 +601,7 @@ export function installDeterministicCompaction(
 				effectiveTokensSaved: outcome.compaction?.tokensSaved ?? 0,
 				rawTokens: outcome.rawTokens,
 				compactAfterInputTokens: config.compactAfterInputTokens,
+				policyEvents: policy.policyEvents,
 			});
 		}
 
@@ -479,14 +611,44 @@ export function installDeterministicCompaction(
 		// Same volatile-tail channel as the stale-view hint; appended AFTER it so the
 		// anchor is the most-recent block. Empty (and byte-identical to v1) when off.
 		const anchorLines = config.semanticAnchorEnabled
-			? renderAnchorBlock(anchor.snapshot(), turn, config.anchorAcceptanceTargets)
+			? renderAnchorBlock(ledger!.snapshot(), turn, config.anchorAcceptanceTargets)
 			: [];
 
-		const tail: AgentMessage[] = [];
-		if (staleHints.length > 0) tail.push(staleHintMessage(staleHints) as unknown as AgentMessage);
-		if (anchorLines.length > 0) tail.push(anchorTailMessage(anchorLines) as unknown as AgentMessage);
-		return tail.length > 0 ? { messages: [...outcome.messages, ...tail] } : { messages: outcome.messages };
-	});
+			const tail: AgentMessage[] = [];
+			const tailBlocks: TailEvidenceBlock[] = [];
+			if (staleHints.length > 0) {
+				const msg = staleHintMessage(staleHints);
+				tail.push(msg as unknown as AgentMessage);
+				tailBlocks.push(evidenceBlock("trust_hint", msg.content));
+			}
+			if (anchorLines.length > 0) {
+				const msg = anchorTailMessage(anchorLines);
+				tail.push(msg as unknown as AgentMessage);
+				tailBlocks.push(evidenceBlock("anchor", msg.content));
+			}
+			if (placeboTail) {
+				tail.push(placeboTail as unknown as AgentMessage);
+				tailBlocks.push(evidenceBlock("placebo", placeboTail.content));
+			}
+			if (compactNudgeTail) {
+				tail.push(compactNudgeTail as unknown as AgentMessage);
+				tailBlocks.push(evidenceBlock("nudge", compactNudgeTail.content));
+			}
+			if (nudgeTail) {
+				tail.push(nudgeTail as unknown as AgentMessage);
+				tailBlocks.push(evidenceBlock("nudge", nudgeTail.content));
+			}
+			if (substitutionEvidence) tailBlocks.push(substitutionEvidence);
+			if (outcome.projected && options.tailEvidence?.record) {
+				options.tailEvidence.record({
+					turn,
+					anchor_lines: anchorLines.length,
+					anchor_hash: anchorLines.length > 0 ? hashText(anchorLines.join("\n")) : null,
+					tail_blocks: tailBlocks,
+				});
+			}
+			return tail.length > 0 ? { messages: [...outcome.messages, ...tail] } : { messages: outcome.messages };
+		});
 
 	// Ambient + CH trace: tally each assistant response.
 	pi.on("message_end", (event) => {
@@ -498,6 +660,7 @@ export function installDeterministicCompaction(
 		if (usage && typeof usage.input === "number" && usage.input > 0) {
 			chTrace.record(observabilityState.turnCounter, usage.input, usage.cacheRead);
 		}
+		taxProbe?.recordAssistant(observabilityState.turnCounter, msg as { content?: unknown; usage?: Record<string, unknown> });
 
 		// Ambient telemetry (guarded separately — CH trace always runs).
 		if (telemetryEnabled) {
@@ -509,9 +672,19 @@ export function installDeterministicCompaction(
 	// teardown for sessions that never completed a loop (see flushTelemetry doc).
 	pi.on("agent_end", (_event, ctx: ExtensionContext) => {
 		flushTelemetry(ctx.sessionManager.getSessionId());
+		taxProbe?.flush(
+			ctx.sessionManager.getSessionId(),
+			options.taxProbe?.write ?? appendTaxProbeRow,
+			ctx.sessionManager.getCwd() ?? process.cwd(),
+		);
 	});
 	pi.on("session_shutdown", (_event, ctx: ExtensionContext) => {
 		if (!anyFlush) flushTelemetry(ctx.sessionManager.getSessionId());
+		taxProbe?.flush(
+			ctx.sessionManager.getSessionId(),
+			options.taxProbe?.write ?? appendTaxProbeRow,
+			ctx.sessionManager.getCwd() ?? process.cwd(),
+		);
 	});
 
 	// --- Observability commands + trigger-marker renderer -----------------------
@@ -521,7 +694,7 @@ export function installDeterministicCompaction(
 	// above does not depend on it.
 	const canRegisterCommands = typeof (pi as { registerCommand?: unknown }).registerCommand === "function";
 	const canRegisterMsgRenderer = typeof (pi as { registerMessageRenderer?: unknown }).registerMessageRenderer === "function";
-		const canRegisterEntryRenderer = typeof (pi as { registerEntryRenderer?: unknown }).registerEntryRenderer === "function";
+	const canRegisterEntryRenderer = typeof (pi as { registerEntryRenderer?: unknown }).registerEntryRenderer === "function";
 	if (options.observability !== false && canRegisterCommands) {
 		registerObservabilityCommands(pi, observabilityState);
 

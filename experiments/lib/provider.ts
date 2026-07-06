@@ -20,15 +20,15 @@
  */
 
 import type { ProviderConfig } from "@earendil-works/pi-coding-agent";
-import { createAssistantMessageEventStream, type Context, type Model, type Usage } from "@earendil-works/pi-ai";
+import { createAssistantMessageEventStream, type AssistantMessage, type Context, type Model, type Usage } from "@earendil-works/pi-ai";
 // Built-in model catalog read. `getModels("deepseek")` returns pi's NATIVE
 // DeepSeek models (deepseek-v4-flash / -pro, api "openai-completions"), so the
 // deepseek branch reuses exactly what pi ships rather than reconstructing a
 // ProviderConfig. Imported from the "/compat" subpath because that is the entry
 // the experiment's module resolver (lib/loader.mjs) and vitest both alias — the
 // non-deprecated "/providers/all" subpath is intentionally NOT aliased there.
-import { getModels } from "@earendil-works/pi-ai/compat";
-import { createMockProvider } from "./compaction-core-adapter.js";
+import { completeSimple, getModels } from "@earendil-works/pi-ai/compat";
+import { createMockProvider, type SidebandSummarizer } from "./compaction-core-adapter.js";
 import type { Scenario } from "./scenario.js";
 
 /**
@@ -89,6 +89,73 @@ export interface ExperimentProvider {
 	 * real one. No real key ever passes through this field.
 	 */
 	runtimeApiKey?: string;
+}
+
+const MOCK_SIDEBAND_TEXT =
+	"Sideband summary: deterministic mock view summary. Keep current file intent, public names, and next edit target.";
+
+function assistantText(message: AssistantMessage): string {
+	let text = "";
+	for (const block of message.content) {
+		if (block.type === "text") text += block.text;
+	}
+	return text;
+}
+
+function finiteUsageTokens(usage: Usage | undefined, field: "input" | "output"): number {
+	const value = usage?.[field];
+	if (typeof value !== "number" || !Number.isFinite(value)) {
+		throw new Error(`Sideband summarizer response did not include provider usage.${field}.`);
+	}
+	return value;
+}
+
+export function createSidebandSummarizer(provider: ExperimentProvider): SidebandSummarizer {
+	if (provider.providerName === MOCK_PROVIDER) {
+		return async (input) => ({
+			text: `${MOCK_SIDEBAND_TEXT}\nPath: ${input.path}\nHash: ${input.hash}`,
+			providerCost: {
+				model: `${provider.modelRef}:sideband-mock`,
+				inputTokens: Math.max(1, Math.ceil((input.content.length + input.path.length + input.hash.length) / 4)),
+				outputTokens: Math.max(1, Math.ceil((MOCK_SIDEBAND_TEXT.length + input.path.length + input.hash.length) / 4)),
+			},
+		});
+	}
+
+	return async (input) => {
+		const context: Context = {
+			systemPrompt:
+				"You are a sideband work-semantics summarizer. Return a concise factual summary of the file view. " +
+				"Preserve decisions, invariants, public interfaces, tests, and unfinished work. Do not invent facts.",
+			messages: [
+				{
+					role: "user",
+					timestamp: Date.now(),
+					content:
+						`Path: ${input.path}\n` +
+						`Content hash: ${input.hash}\n` +
+						`Raw token estimate: ${input.rawTokens}\n\n` +
+						"Summarize only information that would let a later turn avoid re-reading this exact view when semantic detail is sufficient.\n\n" +
+						input.content,
+				},
+			],
+		};
+		const message = await completeSimple(provider.model, context, {
+			maxTokens: 512,
+			temperature: 0,
+			sessionId: `ecode-sideband-${input.turn}-${input.hash}`,
+		});
+		const text = assistantText(message).trim();
+		if (!text) throw new Error("Sideband summarizer returned empty text.");
+		return {
+			text,
+			providerCost: {
+				model: `${provider.modelRef}:sideband`,
+				inputTokens: finiteUsageTokens(message.usage, "input"),
+				outputTokens: finiteUsageTokens(message.usage, "output"),
+			},
+		};
+	};
 }
 
 const MOCK_PROVIDER = "mockcompact";

@@ -2,7 +2,7 @@
   "name": "@ecode/experiments",
   "version": "0.1.0",
   "private": true,
-  "description": "4-arm (A/B/C/D) compaction experiment harness for pi: plan/run/compare entry points over the G1b deterministic-compaction extension + mock provider. Mock-only; real providers swap in at G2 via lib/provider.ts.",
+  "description": "4-arm (A/B/C/D) compaction experiment harness for pi: plan/run/compare entry points over deterministic-compaction, mock fixtures, and real DeepSeek/OpenAI-compatible providers.",
   "type": "module",
   "scripts": {
     "test": "vitest run",
@@ -11,6 +11,10 @@
     "run-arm": "node --import ./lib/register.mjs run.ts",
     "compare": "node --import ./lib/register.mjs compare.ts",
     "export-review": "node --experimental-transform-types export-review.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.9"
   },
   "peerDependencies": {
     "@earendil-works/pi-agent-core": "*",

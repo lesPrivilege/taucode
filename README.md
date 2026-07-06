@@ -42,9 +42,18 @@ cache 按字节匹配）与文件系统持久性（hash 溯源）上的机制；
 - **信任协议野外验证**：模型看到 hash 时序锚点（「此视图早于你在
   第 N 轮的编辑」）即停止自我怀疑、精确区分自编辑与跨文件编辑——
   对无状态模型，信任建立在可核对的溯源上，不建立在断言上。
-- **诚实的未决**：单请求瘦身成立，但单任务总成本在首轮参数点未获益,
-  轨迹膨胀是待分解的主导变量（n=3 重复实验进行中）。任何节省率数字
-  在数据落定前不存在——这是本 repo 的第一纪律。
+- **R2 终判已落版**：refactor/code-production 类任务中，确定性投影以
+  约三分之一成本达到同等 static acceptance，并经 R1-C 三次 artifact
+  人工审计确认质量不劣化；exploration 类任务中，hybrid checkpoint
+  买到完成率而不是成本优势。完整限定词见 `docs/reports/r2-verdict.md`。
+- **诚实的未决**：n=3 只支持方向性判断，不支持显著性宣称；exploration
+  的低成本语义锚点 C''、更狠的负区探针、跨模型外推仍待后续轮验证。
+  任何未跑过的节省率数字仍然不存在——这是本 repo 的第一纪律。
+- **下一步设计入口**：工作语义保护已收敛为「意图声明 + 语义台账 +
+  信任协议」的 `path#hash` 契约。extension 解耦评估见
+  `docs/reports/extension-work-semantics-architecture-2026-07-06.md`，
+  Fable 设计包见 `docs/arch-c3-design-2026-07-06.md`，handoff 链见
+  `docs/cowork-fable-index-2026-07-06.md`。
 
 ## 布局
 

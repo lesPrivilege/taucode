@@ -64,7 +64,9 @@
  * kept distinct so the eventual real-provider analysis is not corrupted.
  */
 
+import { createHash } from "node:crypto";
 import type { AssistantMessage, ToolCall as PiToolCall, Usage } from "@earendil-works/pi-ai";
+import type { SummaryRecord, TailEvidence, TailEvidenceBlock } from "./compaction-core-adapter.js";
 
 /** Header row: run identity + config, emitted once at the top of the file. */
 export interface MetaRow {
@@ -88,6 +90,19 @@ export interface MetaRow {
 		provider_context_window?: number | null;
 		/** Optional V3-WS harness wiring: file-exists acceptance targets. */
 		anchor_acceptance_targets?: string | null;
+		/** EXP-WS addon flags layered onto a physical A/B/C/D arm. */
+		extension_flags?: {
+			semantic_anchor: boolean;
+			ws_declaration: boolean;
+			sideband_summary: boolean;
+			ws_policy: boolean;
+			placebo_token_matching: boolean;
+			compact_nudge_tail: boolean;
+		};
+		/** Token target for the C+PL placebo tail, null outside placebo arms. */
+		placebo_tail_target_tokens?: number | null;
+		/** WS-2.5 measurement nudge mode; must stay off in ordinary experiment arms. */
+		ws_declare_nudge?: "off" | "every-turn";
 	};
 	started_at: string;
 	/** Marker string so smoke fixtures are never mistaken for real G2 workloads. */
@@ -112,6 +127,8 @@ export interface TurnRow {
 	output_tokens: number;
 	/** true when output_tokens came from provider usage, false when estimated. */
 	output_from_usage: boolean;
+	/** Provider reasoning tokens for this turn, or null when not reported. */
+	reasoning_tokens: number | null;
 	/** Tool calls issued in THIS turn's assistant message. */
 	tool_calls: number;
 	/** `read` tool calls in this turn. */
@@ -124,6 +141,12 @@ export interface TurnRow {
 	projected: boolean;
 	/** cacheRead tokens for this turn, or null when the provider gave no signal. */
 	cache_read_tokens: number | null;
+	/** OBS-TAIL: projected-turn tail evidence, empty when no tail block was injected. */
+	tail_blocks: TailEvidenceBlock[];
+	/** OBS-TAIL: count of anchor lines injected on this projected turn. */
+	anchor_lines: number;
+	/** OBS-TAIL: hash of anchor block content, null when no anchor was injected. */
+	anchor_hash: string | null;
 	/** Placeholder for later human fill-in (never computed). */
 	completion: string;
 }
@@ -160,15 +183,36 @@ export interface SummaryRow {
 	summarizer_input_tokens: number;
 	/** Summariser output tokens included in total_output_tokens. */
 	summarizer_output_tokens: number;
+	/** Sideband summariser provider calls (C-SB); 0 when it never ran. */
+	sideband_calls: number;
+	/** Sideband input tokens included in total_input_tokens. */
+	sideband_input_tokens: number;
+	/** Sideband output tokens included in total_output_tokens. */
+	sideband_output_tokens: number;
 	/** Total cacheRead across turns; null when NO turn had a signal. */
 	total_cache_read_tokens: number | null;
+	/** Total reasoning tokens across turns; null when NO turn had a signal. */
+	total_reasoning_tokens: number | null;
 	/** Whether ANY turn carried a cacheRead signal (drives null-vs-0). */
 	cache_signal_present: boolean;
 	completion: string;
 	data_kind: string;
 }
 
-export type MetricRow = MetaRow | TurnRow | SummaryRow;
+export interface SidebandRow {
+	type: "sideband";
+	turn: number;
+	path: string;
+	hash: string;
+	record_id: string;
+	model: string;
+	input_tokens: number;
+	output_tokens: number;
+	text_hash: string;
+	source_hashes: string[];
+}
+
+export type MetricRow = MetaRow | TurnRow | SidebandRow | SummaryRow;
 
 // --- message helpers -------------------------------------------------------
 
@@ -176,6 +220,14 @@ function assistantText(m: AssistantMessage): string {
 	let s = "";
 	for (const b of m.content) if (b.type === "text") s += b.text;
 	return s;
+}
+
+function reasoningFromUsage(usage: Usage | undefined): number | null {
+	if (!usage) return null;
+	const raw = usage as Usage & { reasoning?: unknown; reasoningTokens?: unknown };
+	if (typeof raw.reasoning === "number" && Number.isFinite(raw.reasoning)) return raw.reasoning;
+	if (typeof raw.reasoningTokens === "number" && Number.isFinite(raw.reasoningTokens)) return raw.reasoningTokens;
+	return null;
 }
 
 /** read-tool calls (with their path arg) in an assistant message, in order. */
@@ -216,15 +268,21 @@ export class RunMetrics {
 	private totalCompactedPathReReads = 0;
 	private cacheSignalPresent = false;
 	private cacheTotal = 0;
+	private reasoningSignalPresent = false;
+	private reasoningTotal = 0;
 	private nativeCompactions = 0;
 	// Summariser accounting (arm B): the native compactor's OWN provider call.
 	private summarizerInputTokens = 0;
 	private summarizerOutputTokens = 0;
 	private summarizerCalls = 0;
+	private sidebandRows: SidebandRow[] = [];
+	private sidebandInputTokens = 0;
+	private sidebandOutputTokens = 0;
 
 	// per-turn scratch, set by onOutgoingTokens, consumed by recordAssistant.
 	private pendingInputTokens = 0;
 	private pendingProjected = false;
+	private tailEvidenceByTurn = new Map<number, TailEvidence>();
 
 	/**
 	 * Record the input-token estimate for the payload that will ACTUALLY be sent
@@ -241,10 +299,14 @@ export class RunMetrics {
 	 * Flag that seam-A projected this turn, and register the paths whose read
 	 * RESULT was compacted (so later reads of them count as compacted-path reads).
 	 */
-	noteProjected(compactedReadPaths: string[]): void {
-		this.pendingProjected = true;
-		for (const p of compactedReadPaths) this.compactedPaths.add(p);
-	}
+		noteProjected(compactedReadPaths: string[]): void {
+			this.pendingProjected = true;
+			for (const p of compactedReadPaths) this.compactedPaths.add(p);
+		}
+
+		noteTailEvidence(evidence: TailEvidence): void {
+			this.tailEvidenceByTurn.set(evidence.turn, evidence);
+		}
 
 	/** Native pi compaction fired (observed via session events). */
 	noteNativeCompaction(): void {
@@ -260,6 +322,25 @@ export class RunMetrics {
 		this.summarizerCalls = calls;
 		this.summarizerInputTokens = inputTokens;
 		this.summarizerOutputTokens = outputTokens;
+	}
+
+	recordSideband(record: SummaryRecord): void {
+		const cost = record.providerCost;
+		if (!cost) return;
+		this.sidebandRows.push({
+			type: "sideband",
+			turn: record.turn,
+			path: record.path,
+			hash: record.hash,
+			record_id: record.id,
+			model: cost.model,
+			input_tokens: cost.inputTokens,
+			output_tokens: cost.outputTokens,
+			text_hash: createHash("sha256").update(record.text).digest("hex").slice(0, 16),
+			source_hashes: record.sourceHashes,
+		});
+		this.sidebandInputTokens += cost.inputTokens;
+		this.sidebandOutputTokens += cost.outputTokens;
 	}
 
 	/**
@@ -290,7 +371,13 @@ export class RunMetrics {
 		const outputTokens = hasOutputUsage
 			? usage!.output
 			: Math.ceil(assistantText(message).length / 4);
+		const reasoningTokens = reasoningFromUsage(usage);
+		if (reasoningTokens !== null) {
+			this.reasoningSignalPresent = true;
+			this.reasoningTotal += reasoningTokens;
+		}
 
+		const tailEvidence = this.tailEvidenceByTurn.get(turnNumber);
 		// cacheRead: record verbatim when the provider gave a signal, else null.
 		// A mock provider populates usage but with cacheRead 0 AND no real cache;
 		// we treat cacheRead as "signal present" only when the field is a finite
@@ -303,14 +390,19 @@ export class RunMetrics {
 			input_tokens: this.pendingInputTokens,
 			output_tokens: outputTokens,
 			output_from_usage: hasOutputUsage,
+			reasoning_tokens: reasoningTokens,
 			tool_calls: toolCallCount(message),
 			read_calls: reads.length,
 			re_reads: turnReReads,
 			compacted_path_re_reads: turnCompactedPathReReads,
 			projected: this.pendingProjected,
 			cache_read_tokens: null,
+			tail_blocks: tailEvidence?.tail_blocks ?? [],
+			anchor_lines: tailEvidence?.anchor_lines ?? 0,
+			anchor_hash: tailEvidence?.anchor_hash ?? null,
 			completion: "",
 		});
+		this.tailEvidenceByTurn.delete(turnNumber);
 		// reset per-turn scratch.
 		this.pendingInputTokens = 0;
 		this.pendingProjected = false;
@@ -337,6 +429,10 @@ export class RunMetrics {
 		return this.turns;
 	}
 
+	getSidebandRows(): SidebandRow[] {
+		return this.sidebandRows;
+	}
+
 	buildSummary(base: {
 		arm: string;
 		arm_label: string;
@@ -349,8 +445,8 @@ export class RunMetrics {
 	}): SummaryRow {
 		// Totals INCLUDE the native summariser's own tokens (arm B): pi's auto-
 		// compaction call is a real provider round-trip whose cost belongs to the arm.
-		const totalInput = this.turns.reduce((a, t) => a + t.input_tokens, 0) + this.summarizerInputTokens;
-		const totalOutput = this.turns.reduce((a, t) => a + t.output_tokens, 0) + this.summarizerOutputTokens;
+		const totalInput = this.turns.reduce((a, t) => a + t.input_tokens, 0) + this.summarizerInputTokens + this.sidebandInputTokens;
+		const totalOutput = this.turns.reduce((a, t) => a + t.output_tokens, 0) + this.summarizerOutputTokens + this.sidebandOutputTokens;
 		const totalTools = this.turns.reduce((a, t) => a + t.tool_calls, 0);
 		const projectedTurns = this.turns.reduce((a, t) => a + (t.projected ? 1 : 0), 0);
 		const rate = this.totalReadCalls > 0 ? this.totalCompactedPathReReads / this.totalReadCalls : null;
@@ -376,7 +472,11 @@ export class RunMetrics {
 			summarizer_calls: this.summarizerCalls,
 			summarizer_input_tokens: this.summarizerInputTokens,
 			summarizer_output_tokens: this.summarizerOutputTokens,
+			sideband_calls: this.sidebandRows.length,
+			sideband_input_tokens: this.sidebandInputTokens,
+			sideband_output_tokens: this.sidebandOutputTokens,
 			total_cache_read_tokens: this.cacheSignalPresent ? this.cacheTotal : null,
+			total_reasoning_tokens: this.reasoningSignalPresent ? this.reasoningTotal : null,
 			cache_signal_present: this.cacheSignalPresent,
 			completion: "",
 			data_kind: base.data_kind ?? "synthetic-smoke-fixture",

@@ -42,6 +42,8 @@ export interface ProjectionConfig {
 	compactAfterInputTokens: number;
 	/** compaction-core tuning (keepRecentAssistantMessages, minArgTokens, ...). */
 	compactionOptions?: Partial<CompactionOptions>;
+	/** Optional harness-owned injection overrides layered on top of pi defaults. */
+	compactionInjection?: CompactionInjection;
 }
 
 /**
@@ -89,7 +91,10 @@ export function projectContext(messages: AgentMessage[], config: ProjectionConfi
 	}
 
 	const core = toCore(messages);
-	const compaction = compactCodeProductions(core.coreMessages, config.compactionOptions, PI_COMPACTION_INJECTION);
+	const compaction = compactCodeProductions(core.coreMessages, config.compactionOptions, {
+		...PI_COMPACTION_INJECTION,
+		...config.compactionInjection,
+	});
 
 	// If nothing was compacted, return identity to avoid a needless new array /
 	// cache break (the projected messages would be byte-equal anyway).

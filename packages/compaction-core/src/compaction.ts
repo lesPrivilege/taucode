@@ -114,6 +114,10 @@ export type SummaryMetaExtractor = (
   path: string,
 ) => { hash?: string; diffstat?: string } | undefined;
 
+export type ProtectedPathMatcher =
+  | ReadonlySet<string>
+  | ((path: string) => boolean);
+
 interface ToolCallCompactionInput {
   toolCall: ToolCall;
   toolResult: ToolResult | undefined;
@@ -207,6 +211,27 @@ function parseArguments(args: unknown): unknown {
   } catch {
     return args;
   }
+}
+
+function isProtectedPath(
+  path: string | undefined,
+  matcher: ProtectedPathMatcher | undefined,
+): boolean {
+  if (!path || !matcher) return false;
+  return typeof matcher === "function" ? matcher(path) : matcher.has(path);
+}
+
+function resolveToolResultPath(
+  message: Message,
+  toolCall: ToolCall,
+  pathHashExtractor: PathHashExtractor,
+): string | undefined {
+  const parsedArgs = parseArguments(toolCall.arguments);
+  return (
+    pathHashExtractor(message.content ?? "")?.path ??
+    extractPath(parsedArgs) ??
+    (message.meta?.["sourcePath"] as string | undefined)
+  );
 }
 
 /**
@@ -828,6 +853,11 @@ export interface CompactionInjection {
    * default, so summaries are byte-identical to v1 (G2 shared-build baseline).
    */
   summaryMeta?: SummaryMetaExtractor;
+  /**
+   * Seam #5 (WS-4) — path-level protection from projection. Absent by default,
+   * so the compaction set is unchanged unless a harness explicitly opts in.
+   */
+  protectedPaths?: ProtectedPathMatcher;
 }
 
 /**
@@ -854,6 +884,7 @@ export function compactCodeProductions(
   const pathHashExtractor =
     injection?.pathHashExtractor ?? hashlineExtractor;
   const summaryMeta = injection?.summaryMeta;
+  const protectedPaths = injection?.protectedPaths;
 
   // Find assistant message indices to determine "recent" messages
   const assistantIndices: number[] = [];
@@ -925,6 +956,14 @@ export function compactCodeProductions(
       if (toolCallInfo.assistantIdx >= recentCutoff) return msg;
 
       const strategy = matchStrategy(strategies, msg.toolName ?? "");
+      if (
+        isProtectedPath(
+          resolveToolResultPath(msg, toolCallInfo.toolCall, pathHashExtractor),
+          protectedPaths,
+        )
+      ) {
+        return msg;
+      }
       const output = strategy?.compactToolResult?.({
         message: msg,
         toolCall: toolCallInfo.toolCall,
@@ -969,6 +1008,9 @@ export function compactCodeProductions(
     const newToolCalls = msg.toolCalls!.map((tc) => {
       const toolResult = toolResultMap.get(tc.id);
       const strategy = matchStrategy(strategies, tc.name);
+      if (isProtectedPath(extractPath(parseArguments(tc.arguments)), protectedPaths)) {
+        return tc;
+      }
       const output = strategy?.compactToolCall?.({
         toolCall: tc,
         toolResult,

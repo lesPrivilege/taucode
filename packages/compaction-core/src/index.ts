@@ -20,6 +20,7 @@ export {
   type CompactionResult,
   type CompactionDiffEntry,
   type CompactionInjection,
+  type ProtectedPathMatcher,
   type StrategyMatcher,
   type PathHashExtractor,
   type ToolCompactionStrategy,

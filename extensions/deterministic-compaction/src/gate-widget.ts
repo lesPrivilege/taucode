@@ -1,3 +1,5 @@
+import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+
 /**
  * Gate widget for the deterministic-compaction extension.
  *
@@ -67,10 +69,11 @@ export function renderGateWidget(_width: number): string[] {
  *
  * The factory signature matches pi's `ui.setWidget(id, (tui, theme) => Widget)`.
  */
-export function registerGateWidget(ui: { setWidget: (id: string, factory: (tui: unknown, theme: unknown) => { render: typeof renderGateWidget; height: number }) => void }): void {
+export function registerGateWidget(ui: { setWidget: ExtensionUIContext["setWidget"] }): void {
 	if (gateWidgetRegistered) return;
 	ui.setWidget("compaction-gate", (_tui: unknown, _theme: unknown) => ({
 		render: renderGateWidget,
+		invalidate: () => {},
 		get height(): number {
 			return 1;
 		},

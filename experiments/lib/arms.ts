@@ -33,6 +33,16 @@
  */
 
 export type ArmId = "A" | "B" | "C" | "D";
+export type ArmSpecId = ArmId | "C-SB" | "C+PL" | "C+N" | "C'''-capture";
+
+export interface ExtensionFlagSet {
+	semanticAnchor: boolean;
+	workSemanticsDeclaration: boolean;
+	sidebandSummary: boolean;
+	workSemanticsPolicy: boolean;
+	placeboTokenMatching: boolean;
+	compactNudgeTail: boolean;
+}
 
 export interface ArmDefinition {
 	id: ArmId;
@@ -43,6 +53,13 @@ export interface ArmDefinition {
 	seamAInstalled: boolean;
 	/** Install G1b's seam-B `session_before_compact` checkpoint. */
 	seamBInstalled: boolean;
+}
+
+export interface ArmSpec {
+	id: ArmSpecId;
+	label: string;
+	base: ArmDefinition;
+	flags: ExtensionFlagSet;
 }
 
 export const ARMS: Record<ArmId, ArmDefinition> = {
@@ -87,6 +104,70 @@ export const ALL_ARMS: ArmId[] = ["A", "B", "C", "D"];
 
 export function isArmId(x: string): x is ArmId {
 	return x === "A" || x === "B" || x === "C" || x === "D";
+}
+
+const NO_FLAGS: ExtensionFlagSet = {
+	semanticAnchor: false,
+	workSemanticsDeclaration: false,
+	sidebandSummary: false,
+	workSemanticsPolicy: false,
+	placeboTokenMatching: false,
+	compactNudgeTail: false,
+};
+
+export const ARM_SPECS: Record<ArmSpecId, ArmSpec> = {
+	A: { id: "A", label: ARMS.A.label, base: ARMS.A, flags: NO_FLAGS },
+	B: { id: "B", label: ARMS.B.label, base: ARMS.B, flags: NO_FLAGS },
+	C: { id: "C", label: ARMS.C.label, base: ARMS.C, flags: NO_FLAGS },
+	D: { id: "D", label: ARMS.D.label, base: ARMS.D, flags: NO_FLAGS },
+	"C-SB": {
+		id: "C-SB",
+		label: "seam-A hook + sideband summaries + WS policy",
+		base: ARMS.C,
+		flags: {
+			...NO_FLAGS,
+			semanticAnchor: true,
+			sidebandSummary: true,
+			workSemanticsPolicy: true,
+		},
+	},
+	"C+PL": {
+		id: "C+PL",
+		label: "seam-A hook + placebo token-matching control",
+		base: ARMS.C,
+		flags: {
+			...NO_FLAGS,
+			placeboTokenMatching: true,
+		},
+	},
+	"C+N": {
+		id: "C+N",
+		label: "seam-A hook + compact nudge tail",
+		base: ARMS.C,
+		flags: {
+			...NO_FLAGS,
+			compactNudgeTail: true,
+		},
+	},
+	"C'''-capture": {
+		id: "C'''-capture",
+		label: "seam-A hook + in-band declaration capture",
+		base: ARMS.C,
+		flags: {
+			...NO_FLAGS,
+			semanticAnchor: true,
+			workSemanticsDeclaration: true,
+		},
+	},
+};
+
+export function isArmSpecId(x: string): x is ArmSpecId {
+	return x in ARM_SPECS;
+}
+
+export function resolveArmSpec(x: string): ArmSpec {
+	if (!isArmSpecId(x)) throw new Error(`Unknown arm "${x}". Use A, B, C, D, C-SB, C+PL, C+N, or C'''-capture.`);
+	return ARM_SPECS[x];
 }
 
 /** Seam-A sweep surface: the required 4 threshold values. */

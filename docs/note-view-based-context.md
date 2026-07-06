@@ -1,4 +1,12 @@
-# Note — 视图化 context：意图声明 + 按读取次的语义视图（设计种子）
+# Note — 视图化 context：意图声明 + 语义台账 + 信任协议（设计种子）
+
+> 2026-07-06 更新：R2 后补充设计见
+> `docs/reports/llm-declared-work-semantics-2026-07-06.md`。当前判断：
+> view-based context 是三位一体——意图声明（模型→harness 的向下契约）、
+> 语义台账（存储层）、信任协议（harness→模型的向上契约）共用同一个
+> `path#hash` 寻址机制，实现时应作为一个系统推进，而不是三个 feature。
+> extension 侧的解耦改造评估见
+> `docs/reports/extension-work-semantics-architecture-2026-07-06.md`。
 
 2026-07-05。状态：**种子,不实现**。等 DF0 数据（分诊 ≥5 条）复盘后裁定是否立项。
 来源：dogfooding 首日观察（replacement 后反复重读）引出的两步推演。

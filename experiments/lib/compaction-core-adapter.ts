@@ -47,6 +47,11 @@ export {
 	type DeterministicCompactionConfig,
 } from "../../extensions/deterministic-compaction/src/extension.js";
 
+export type { SummaryRecord } from "../../extensions/deterministic-compaction/src/semantic-ledger.js";
+export type { SidebandSummarizer } from "../../extensions/deterministic-compaction/src/sideband-summary.js";
+export type { TaxProbeTurn } from "../../extensions/deterministic-compaction/src/tax-probe.js";
+export type { TailEvidence, TailEvidenceBlock } from "../../extensions/deterministic-compaction/src/tail-evidence.js";
+
 export {
 	createMockProvider,
 	registerMockProvider,

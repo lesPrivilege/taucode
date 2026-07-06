@@ -1,3 +1,5 @@
+import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+
 /**
  * S3 — cache-hit ratio trace (DF-TUI).
  *
@@ -49,12 +51,13 @@ export function sparkChar(ratio: number): string {
 let chWidgetRegistered = false;
 
 export function registerCHWidget(
-	ui: { setWidget: (id: string, factory: () => { render: () => string[]; height: number }) => void },
+	ui: { setWidget: ExtensionUIContext["setWidget"] },
 	trace: CHTrace,
 ): void {
 	if (chWidgetRegistered) return;
 	ui.setWidget("compaction-ch", () => ({
 		render: () => renderCHStrip(trace.getSamples()),
+		invalidate: () => {},
 		get height() { return 1; },
 	}));
 	chWidgetRegistered = true;

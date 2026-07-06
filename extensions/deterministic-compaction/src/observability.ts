@@ -81,6 +81,8 @@ export interface TriggerMarkerData {
 	rawTokens: number;
 	/** The gate threshold that was crossed. */
 	compactAfterInputTokens: number;
+	/** WS-4 policy record ids that changed this projection, never sent to the LLM. */
+	policyEvents?: string[];
 }
 
 /**
@@ -224,7 +226,8 @@ export interface TuiComponents {
  * tests can assert the exact line without a TUI.
  */
 export function formatTriggerMarkerLine(data: TriggerMarkerData): string {
-	return `[compaction fired] turn ${data.turn}: ${data.compactedCount} replacement(s), ~${data.effectiveTokensSaved.toLocaleString()} tokens saved (gate ${data.rawTokens.toLocaleString()}/${data.compactAfterInputTokens.toLocaleString()})`;
+	const policy = data.policyEvents && data.policyEvents.length > 0 ? `; policy ${data.policyEvents.join(", ")}` : "";
+	return `[compaction fired] turn ${data.turn}: ${data.compactedCount} replacement(s), ~${data.effectiveTokensSaved.toLocaleString()} tokens saved (gate ${data.rawTokens.toLocaleString()}/${data.compactAfterInputTokens.toLocaleString()})${policy}`;
 }
 
 /**

@@ -9,9 +9,14 @@ taucode 本体在兄弟目录 `../taucode/`，只读引用，不改。
 
 依赖图：G0 → G1a‖G1b 前半 → G1b → G1c → G2（执行轮，人分发）
 
-> **状态 2026-07-05**：G0/G1a/G1b/G1c 全部完成，各经独立复核（含一次
-> compaction-core export 修复，commit `469a68a`）。`pi/` 对 upstream 零 diff。
-> 剩 G2：待 ① DeepSeek/Mimo credential ② 人定 task packets ③ 质量复核判权在人。
+> **状态 2026-07-06**：G0-G1e、DF1-DF2、V2-TP、G3-AR、V3-WS 均已落版；
+> `pi/` 对 upstream 仍保持零 diff。R2 core 27 run + B' add-on 9 run
+> 已完成，`docs/reports/r2-verdict.md` 给出终判；R1-C artifact 已人工
+> 盲评补记。当前待办转为：① R1-C/D1-C sweep 缩编轮 ② E1 × C''
+> 语义锚点追加轮 ③ 发布/申请材料定稿与长期路线维护。R2 后续
+> 已补齐 turn 级复盘、LLM-declared work semantics、extension 解耦
+> 架构评估与 Fable cowork outcome；设计包已落在
+> `docs/arch-c3-design-2026-07-06.md`，分发链从 WS-0/WS-1 开始。
 
 ---
 

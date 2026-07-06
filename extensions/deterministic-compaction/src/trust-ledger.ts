@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { SemanticLedger, type LedgerEntry } from "./semantic-ledger.js";
 
 /**
  * V2-TP trust ledger (task 1 + 2). Session-scoped, in-memory record of the
@@ -12,14 +13,7 @@ export function hashContent(content: string): string {
 	return createHash("sha256").update(content).digest("hex").slice(0, 8);
 }
 
-export interface LedgerEntry {
-	/** SHA-256/8-hex of the content at record time (the current authoritative hash). */
-	hash: string;
-	/** Turn the entry was recorded. */
-	turn: number;
-	/** Present on edit/write records — the model's physical evidence of its own change. */
-	diffstat?: string;
-}
+export type { LedgerEntry };
 
 /**
  * Parse a unified diff/patch into a "+N -M" diffstat string.
@@ -35,21 +29,14 @@ export function parseDiffstat(patch: string): string {
 	return `+${added} -${removed}`;
 }
 
-export class TrustLedger {
-	private readonly byPath = new Map<string, LedgerEntry>();
-
+export class TrustLedger extends SemanticLedger {
 	/** Record a read/bash view: path -> {hash, turn}. */
 	recordView(path: string, content: string, turn: number): void {
-		this.byPath.set(path, { hash: hashContent(content), turn });
+		super.recordView(path, hashContent(content), turn);
 	}
 
 	/** Record an edit/write: path -> {hash, turn, diffstat} (post-write hash). */
 	recordEdit(path: string, content: string, turn: number, diffstat: string): void {
-		this.byPath.set(path, { hash: hashContent(content), turn, diffstat });
-	}
-
-	/** The latest ledger entry for a path, or undefined if never recorded. */
-	get(path: string): LedgerEntry | undefined {
-		return this.byPath.get(path);
+		super.recordEdit(path, hashContent(content), turn, diffstat);
 	}
 }
