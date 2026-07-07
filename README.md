@@ -68,6 +68,20 @@ https://lesprivilege.github.io/ecode/
 | `experiments/` | 多臂对照 harness：plan / run / compare + artifact 留存 |
 | `bin/ecode` | launcher：隔离 profile + env 路由，vanilla pi 为日常对照组 |
 
+## 开发起步（fresh checkout）
+
+`pi/` 是独立 fork，被 .gitignore 排除，clone 本 repo 不会带上它。三步：
+
+```bash
+git clone https://github.com/badlogic/pi-mono.git pi   # 在 repo 根内，作为 pi/
+(cd pi && npm ci)                                       # pi 是 npm workspaces 单体仓
+(cd pi && npm run build)                                # 仅 bin/ecode launcher 需要
+```
+
+之后 `packages/compaction-core`、`extensions/deterministic-compaction`、
+`experiments/` 各自 `npm install && npm test`（依赖别名直接指向 pi 源码，
+无需发布包）。完整审计记录见 `docs/reports/release-audit-2026-07-08.md`。
+
 ## 工作方式
 
 多 agent 分工：packet 自含（精确文件清单 + 验收标准 + 禁区），弱模型

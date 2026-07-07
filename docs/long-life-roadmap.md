@@ -153,6 +153,10 @@ support them.
 ### 待做（非实验）
 
 16. `RELEASE-AUDIT`: fresh checkout, install, test, typecheck, launcher smoke.
+    (跑毕 2026-07-08：`docs/reports/release-audit-2026-07-08.md`。verdict
+    「差 X/Y」的三个已验证补丁（peerDependenciesMeta ×2、tsconfig oauth
+    path、README 开发起步节）当日已落主 repo 并复验绿。compaction-core
+    单独即刻可发；A2 形态待人裁。)
 17. `UPSTREAM-ISSUES`: write three narrowly scoped upstream issues with repo
     evidence links.
     (草稿已备 2026-07-08：`docs/upstream-drafts-2026-07-08.md`——三 pi issue
