@@ -38,3 +38,42 @@ G1a 架构的既有属性,无需新决策。发布物:`@ecode/compaction-core` +
 G2 round 1 + round 2（C' 臂）双数据到位 → 复盘定稿:路径 A 立即发;
 路径 B 若 cache 账为正或中性 → 全叙事发;若为负 → 只发质量叙事 +
 诚实成本注记（负账本身是论文素材,不是发布障碍）。
+
+---
+
+## 定稿草案（2026-07-08，Fable 组装；发布裁决归人）
+
+**触发条件已满足**：R2 core（27 run）+ B' add-on + C''/Branch B/C 均落版，
+口径入口 `docs/stage-verdict-2026-07.md`。本节把种子条款逐条兑现成
+决策点；每个决策点等人裁，不自动执行。
+
+### 路径 A（解耦插件）——建议：发，先过 RELEASE-AUDIT 门
+
+- 种子条款「随时可发」在 H5 有一个前置：fresh checkout 全绿 + 安装摩擦低
+  （`RELEASE-AUDIT`，roadmap 待做 16）。这是唯一剩余门，未跑过。
+- 发布物清单不变：`packages/compaction-core` + `extensions/deterministic-compaction`
+  （含 trust-protocol flag）+ launcher 说明。
+- **决策点 A1**：批准执行 RELEASE-AUDIT（可分发 agent）。
+- **决策点 A2**：audit 绿后的形态——npm 发包 vs 仅 repo tag + README 安装节。
+
+### 路径 B（叙事）——cache 账已裁，按工作负载分支适用种子条款
+
+R2 的账不是单值，按任务类型三分（`r2-verdict.md`）：
+
+| 工作负载 | 账 | 种子条款适用 |
+| --- | --- | --- |
+| refactor / code-production | 正（~1/3 成本达同等验收，n=3 中位，盲评确认） | 全叙事可发，句式锁 H5 限定版 |
+| exploration | 成本轴负 / completion 由 hybrid 买到 | 只发质量叙事 + 诚实成本注记；引 R14「ritual 买 completion，content 买轨迹」拆分 |
+| direct-transform | 中性（重读修复保真损失，恐惧未复现） | 不需特殊叙事；更狠探针在待验列 |
+
+- 主叙事 = context 质量（本文件原裁定不变）；成本叙事第二位带数据注记。
+- **决策点 B1**：渠道排序——建议 pi issues（工程对话）→ DeepSeek 社区
+  （provider ask）→ working paper 附录（叙事）。素材已备：
+  `docs/upstream-drafts-2026-07-08.md`（外发前逐字过目）。
+- **决策点 B2**：时点——建议 A 门（RELEASE-AUDIT）绿后同周发出，
+  issue 里可指向可安装的 artifact 而非裸 repo。
+
+### 本节之后
+
+两个决策点包（A1/A2、B1/B2）任一裁定即可动工；全部裁定后本文件
+状态从「种子」改「终稿」，并同步 README 的发布口径。

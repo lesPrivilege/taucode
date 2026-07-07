@@ -155,6 +155,9 @@ support them.
 16. `RELEASE-AUDIT`: fresh checkout, install, test, typecheck, launcher smoke.
 17. `UPSTREAM-ISSUES`: write three narrowly scoped upstream issues with repo
     evidence links.
+    (草稿已备 2026-07-08：`docs/upstream-drafts-2026-07-08.md`——三 pi issue
+    + DeepSeek ask，各带源码复核；「cache diagnostics」候选按 DRIFT 退役。
+    外发归人。release 决策点包见 `note-release-paths.md` 定稿草案节。)
 18. `SYMBOL-SUMMARY`: deterministic TypeScript export/function summary for read
     projections.
 19. `CHORES-2026-07-08`: 环境卫生三件——docs/scratch 过时生成器清除、论文预览
