@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deterministic Context Projection in an Agent Loop</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&family=Fira+Code:wght@450&display=swap" rel="stylesheet">
+  
+  <!-- Marked.js Markdown Parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    /* Design System Tokens */
+    :root {
+      --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-body: 'Lora', Georgia, serif;
+      --font-mono: 'Fira Code', monospace;
+      
+      /* Light Mode Palette */
+      --bg-main: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-sidebar: #f1f5f9;
+      --border-color: #e2e8f0;
+      
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --text-link: #0284c7;
+      
+      --accent: #3b82f6;
+      --accent-rgb: 59, 130, 246;
+      --accent-hover: #1d4ed8;
+      
+      --code-bg: #0f172a;
+      --code-text: #e2e8f0;
+      
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      
+      --transition-fast: 0.15s ease;
+      --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="dark"] {
+      /* Dark Mode Palette */
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-sidebar: #0b0f19;
+      --border-color: #334155;
+      
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-link: #38bdf8;
+      
+      --accent: #38bdf8;
+      --accent-rgb: 56, 189, 248;
+      --accent-hover: #7dd3fc;
+      
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+    }
+
+    /* Reset & Base Styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      font-size: 1.125rem;
+      line-height: 1.75;
+      transition: background-color var(--transition-normal), color var(--transition-normal);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Layout */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background-color: rgba(var(--bg-card), 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+      transition: background-color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    .navbar-title {
+      font-family: var(--font-ui);
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: -0.025em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .navbar-title span {
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .navbar-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-icon {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all var(--transition-fast);
+    }
+
+    .btn-icon:hover {
+      background-color: var(--bg-sidebar);
+      border-color: var(--text-muted);
+    }
+
+    .toggle-group {
+      display: flex;
+      background-color: var(--bg-sidebar);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .btn-toggle {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .btn-toggle:hover {
+      color: var(--text-main);
+    }
+
+    .btn-toggle.active {
+      background-color: var(--bg-card);
+      color: var(--accent);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .app-container {
+      display: flex;
+      margin-top: 64px;
+      min-height: calc(100vh - 64px);
+    }
+
+    /* Sidebar Table of Contents */
+    .sidebar {
+      width: 280px;
+      position: fixed;
+      top: 64px;
+      bottom: 0;
+      left: 0;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      padding: 24px;
+      overflow-y: auto;
+      transition: all var(--transition-normal);
+      z-index: 90;
+    }
+
+    .sidebar-title {
+      font-family: var(--font-ui);
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .toc-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .toc-item {
+      font-family: var(--font-ui);
+      font-size: 0.8125rem;
+      line-height: 1.4;
+    }
+
+    .toc-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      display: block;
+      padding: 6px 8px;
+      border-radius: 6px;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .toc-link:hover {
+      color: var(--text-main);
+      background-color: rgba(var(--accent-rgb), 0.08);
+    }
+
+    .toc-link.active {
+      color: var(--accent);
+      font-weight: 600;
+      background-color: rgba(var(--accent-rgb), 0.12);
+    }
+
+    .toc-item-h2 { padding-left: 0px; }
+    .toc-item-h3 { padding-left: 12px; font-size: 0.78rem; }
+
+    /* Content Area */
+    .content-wrapper {
+      flex: 1;
+      margin-left: 280px;
+      padding: 48px 24px;
+      display: flex;
+      justify-content: center;
+      transition: margin-left var(--transition-normal);
+    }
+
+    .article-container {
+      width: 100%;
+      max-width: 800px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      box-shadow: var(--shadow-sm);
+      padding: 48px;
+      transition: background-color var(--transition-normal), border-color var(--transition-normal), max-width var(--transition-normal);
+    }
+
+    /* Split View Styling */
+    body.view-split .content-wrapper {
+      padding: 32px 16px;
+    }
+    
+    body.view-split .article-container {
+      max-width: 1500px;
+      padding: 36px;
+    }
+
+    .split-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      border-bottom: 1px solid var(--border-color);
+      padding: 24px 0;
+      transition: border-color var(--transition-normal);
+    }
+
+    .split-row:last-child {
+      border-bottom: none;
+    }
+
+    .split-col {
+      min-width: 0; /* Prevents flex items from overflowing */
+    }
+
+    /* Markdown Typography */
+    h1, h2, h3, h4, h5, h6 {
+      font-family: var(--font-ui);
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.25;
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+    }
+
+    h1 { font-size: 2.25rem; margin-top: 0; letter-spacing: -0.03em; }
+    h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-top: 2em; }
+    h3 { font-size: 1.15rem; margin-top: 1.5em; }
+
+    p {
+      margin-bottom: 1.25em;
+    }
+
+    blockquote {
+      border-left: 4px solid var(--accent);
+      padding: 8px 16px;
+      background-color: var(--bg-sidebar);
+      color: var(--text-muted);
+      font-style: italic;
+      margin-bottom: 1.5em;
+      border-radius: 0 8px 8px 0;
+    }
+
+    ul, ol {
+      margin-bottom: 1.5em;
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 0.5em;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.875em;
+      background-color: var(--bg-sidebar);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      color: var(--accent);
+      transition: background-color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    pre {
+      background-color: var(--code-bg);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin-bottom: 1.5em;
+      border: 1px solid var(--border-color);
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      border: none;
+      color: var(--code-text);
+      font-size: 0.875rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5em;
+      font-family: var(--font-ui);
+      font-size: 0.875rem;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+      text-align: left;
+    }
+
+    th {
+      font-weight: 600;
+      background-color: var(--bg-sidebar);
+      color: var(--text-main);
+    }
+
+    tr:hover td {
+      background-color: rgba(var(--accent-rgb), 0.02);
+    }
+
+    hr {
+      border: 0;
+      height: 1px;
+      background: var(--border-color);
+      margin: 2.5em 0;
+    }
+
+    /* Paper Styling Enhancements */
+    .paper-header {
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+
+    .paper-meta {
+      font-family: var(--font-ui);
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .paper-meta span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Loading Spinner */
+    .loader-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      width: 100%;
+      gap: 16px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 0.875rem;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      
+      .content-wrapper {
+        margin-left: 0;
+      }
+      
+      body.sidebar-open .sidebar {
+        transform: translateX(0);
+      }
+      
+      body.sidebar-open .content-wrapper {
+        filter: blur(2px);
+        pointer-events: none;
+      }
+      
+      .btn-sidebar-toggle {
+        display: flex !important;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .article-container {
+        padding: 24px;
+        border-radius: 8px;
+        border: none;
+      }
+      
+      body.view-split .split-row {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+      
+      body.view-split .split-row .split-col:nth-child(2) {
+        border-top: 1px dashed var(--border-color);
+        padding-top: 24px;
+      }
+    }
+
+    .btn-sidebar-toggle {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="navbar-title">
+      <button class="btn-icon btn-sidebar-toggle" id="sidebar-toggle" style="margin-right: 8px;">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <span><i class="fa-solid fa-chart-line"></i> Compaction Tax Ledger</span>
+    </div>
+    
+    <div class="navbar-controls">
+      <!-- Language Switcher -->
+      <div class="toggle-group" id="lang-switch">
+        <button class="btn-toggle active" data-lang="en">EN</button>
+        <button class="btn-toggle" data-lang="zh">中文</button>
+        <button class="btn-toggle" data-lang="split">Bilingual</button>
+      </div>
+
+      <!-- Theme Switcher -->
+      <button class="btn-icon" id="theme-toggle" title="Toggle theme">
+        <i class="fa-solid fa-moon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="app-container">
+    
+    <!-- Sidebar Table of Contents -->
+    <aside class="sidebar">
+      <div class="sidebar-title">Table of Contents</div>
+      <nav>
+        <ul class="toc-list" id="toc">
+          <!-- Dynamically filled -->
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content-wrapper">
+      <article class="article-container" id="content">
+        <div class="loader-container">
+          <div class="spinner"></div>
+          <div>Loading paper...</div>
+        </div>
+      </article>
+    </main>
+
+  </div>
+
+  <script>
+    // Theme Management
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = themeToggle.querySelector('i');
+    
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      if (theme === 'dark') {
+        themeIcon.className = 'fa-solid fa-sun';
+      } else {
+        themeIcon.className = 'fa-solid fa-moon';
+      }
+    }
+
+    // Set initial theme
+    const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    setTheme(savedTheme);
+
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    });
+
+    // Sidebar Mobile Toggle
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    sidebarToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.body.classList.toggle('sidebar-open');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (document.body.classList.contains('sidebar-open') && !e.target.closest('.sidebar') && e.target !== sidebarToggle) {
+        document.body.classList.remove('sidebar-open');
+      }
+    });
+
+    // Content Loading & Rendering
+    let enMarkdown = '';
+    let zhMarkdown = '';
+    let enSections = [];
+    let zhSections = [];
+
+    async function loadPaperData() {
+      try {
+        const enRes = await fetch('./paper-context-economy-2026-07-07.md');
+        const zhRes = await fetch('./paper-context-economy-2026-07-07_zh.md');
+        
+        if (!enRes.ok || !zhRes.ok) {
+          throw new Error('Failed to load markdown files');
+        }
+        
+        enMarkdown = await enRes.text();
+        zhMarkdown = await zhRes.text();
+        
+        enSections = parseSections(enMarkdown);
+        zhSections = parseSections(zhMarkdown);
+        
+        renderView('en'); // Default view
+      } catch (err) {
+        document.getElementById('content').innerHTML = `
+          <div style="color: #ef4444; text-align: center; padding: 24px; font-family: var(--font-ui)">
+            <i class="fa-solid fa-circle-exclamation" style="font-size: 2rem; margin-bottom: 12px"></i>
+            <div>Error loading paper documents. Ensure index.html is served via an HTTP server.</div>
+            <div style="font-size: 0.8rem; margin-top: 8px; opacity: 0.8">${err.message}</div>
+          </div>
+        `;
+      }
+    }
+
+    // Split Markdown into Sections by Headings
+    function parseSections(markdown) {
+      const lines = markdown.split('\n');
+      const sections = [];
+      let currentSection = { header: '', level: 0, content: [] };
+      
+      for (let line of lines) {
+        const headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
+        if (headerMatch) {
+          if (currentSection.content.length > 0 || currentSection.header) {
+            sections.push({
+              header: currentSection.header,
+              level: currentSection.level,
+              text: currentSection.content.join('\n')
+            });
+          }
+          currentSection = {
+            header: headerMatch[2],
+            level: headerMatch[1].length,
+            content: []
+          };
+        } else {
+          currentSection.content.push(line);
+        }
+      }
+      if (currentSection.content.length > 0 || currentSection.header) {
+        sections.push({
+          header: currentSection.header,
+          level: currentSection.level,
+          text: currentSection.content.join('\n')
+        });
+      }
+      return sections;
+    }
+
+    // Render Table of Contents
+    function renderTOC(sections) {
+      const toc = document.getElementById('toc');
+      toc.innerHTML = '';
+      
+      sections.forEach((sec, idx) => {
+        if (!sec.header || sec.level > 3) return;
+        
+        const li = document.createElement('li');
+        li.className = `toc-item toc-item-h${sec.level}`;
+        
+        const a = document.createElement('a');
+        a.href = `#sec-${idx}`;
+        a.className = 'toc-link';
+        // Clean up markdown in header text if any
+        a.innerText = sec.header.replace(/\*\*|\*/g, '').replace(/`|`/g, '');
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          document.getElementById(`sec-${idx}`).scrollIntoView({ behavior: 'smooth' });
+          document.body.classList.remove('sidebar-open');
+        });
+        
+        li.appendChild(a);
+        toc.appendChild(li);
+      });
+      
+      setupScrollSpy();
+    }
+
+    // Scrollspy setup
+    function setupScrollSpy() {
+      const links = document.querySelectorAll('.toc-link');
+      const sections = document.querySelectorAll('[id^="sec-"]');
+      
+      window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(sec => {
+          const sectionTop = sec.offsetTop;
+          if (pageYOffset >= sectionTop - 120) {
+            current = sec.getAttribute('id');
+          }
+        });
+        
+        links.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === `#${current}`) {
+            link.classList.add('active');
+          }
+        });
+      });
+    }
+
+    // Render View based on Lang setting
+    function renderView(mode) {
+      const container = document.getElementById('content');
+      document.body.className = '';
+      
+      if (mode === 'en') {
+        container.innerHTML = `<div class="single-view">${renderSingleView(enSections)}</div>`;
+        renderTOC(enSections);
+      } else if (mode === 'zh') {
+        container.innerHTML = `<div class="single-view">${renderSingleView(zhSections)}</div>`;
+        renderTOC(zhSections);
+      } else if (mode === 'split') {
+        document.body.classList.add('view-split');
+        container.innerHTML = `<div class="split-view">${renderSplitView()}</div>`;
+        renderTOC(zhSections); // Use Chinese headers for TOC in bilingual
+      }
+    }
+
+    function renderSingleView(sections) {
+      return sections.map((sec, idx) => {
+        let headerMarkdown = '';
+        if (sec.header) {
+          headerMarkdown = '#'.repeat(sec.level) + ' ' + sec.header + '\n';
+        }
+        return `
+          <div id="sec-${idx}" class="section-block">
+            ${marked.parse(headerMarkdown + sec.text)}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSplitView() {
+      let html = '';
+      const maxLength = Math.max(enSections.length, zhSections.length);
+      
+      for (let i = 0; i < maxLength; i++) {
+        const enSec = enSections[i] || { header: '', level: 1, text: '' };
+        const zhSec = zhSections[i] || { header: '', level: 1, text: '' };
+        
+        let enHeaderMarkdown = enSec.header ? '#'.repeat(enSec.level) + ' ' + enSec.header + '\n' : '';
+        let zhHeaderMarkdown = zhSec.header ? '#'.repeat(zhSec.level) + ' ' + zhSec.header + '\n' : '';
+        
+        html += `
+          <div id="sec-${i}" class="split-row">
+            <div class="split-col">
+              ${marked.parse(enHeaderMarkdown + enSec.text)}
+            </div>
+            <div class="split-col">
+              ${marked.parse(zhHeaderMarkdown + zhSec.text)}
+            </div>
+          </div>
+        `;
+      }
+      return html;
+    }
+
+    // Toggle controls
+    const langSwitch = document.getElementById('lang-switch');
+    langSwitch.addEventListener('click', (e) => {
+      const button = e.target.closest('.btn-toggle');
+      if (!button) return;
+      
+      langSwitch.querySelectorAll('.btn-toggle').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      
+      renderView(button.dataset.lang);
+    });
+
+    // Start App
+    loadPaperData();
+  </script>
+</body>
+</html>
