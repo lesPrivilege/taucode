@@ -15,7 +15,8 @@ merely a window-management technique; it is a transaction against a cache ledger
 and the transaction has a price that the dominant implementation (LLM-generated
 summaries) makes impossible to audit.
 
-This paper describes **ecode**, a small research harness built on the pi coding
+This paper describes **taucode** (formerly *ecode* during the pi-experiment phase;
+name unified 2026-07 — τ = 2π), a small research harness built on the pi coding
 agent, that replaces LLM summarization with *deterministic context projection*: a
 pure function from message history to a smaller message history, applied only at
 send time, gated by a token threshold below which the payload is byte-identical to
@@ -175,7 +176,7 @@ advisory content.
 
 ### 3.1 Host: a thin loop with explicit seams
 
-ecode is built on **pi** (the `pi-mono` coding agent), chosen precisely because it
+taucode is built on **pi** (the `pi-mono` coding agent), chosen precisely because it
 is a thin loop: its context assembly is small enough to be fully observable, and it
 exposes two extension seams that map exactly onto the design:
 
@@ -184,7 +185,7 @@ exposes two extension seams that map exactly onto the design:
   persisted.
 - **Seam B** — a `session_before_compact` hook that may replace pi's native
   LLM-summary compaction with a caller-supplied entry (kept optional and off by
-  default in ecode; the native summarizer is retained as an experiment arm, not
+  default in taucode; the native summarizer is retained as an experiment arm, not
   deleted).
 
 The fork discipline is strict: `pi/` carries zero diff against upstream; everything
@@ -462,7 +463,7 @@ correctly — held under production conditions.
 
 ### 5.5 Self-application
 
-The blind review in §5.2 was itself conducted inside an ecode session: the audit
+The blind review in §5.2 was itself conducted inside a taucode session: the audit
 work ran with projection live, saving 56,780 tokens (67%) at a 98.1% cache-hit
 rate. We flag this as dogfooding, not as controlled evidence; its value is that the
 tooling's own paper trail was produced under the tooling.

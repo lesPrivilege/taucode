@@ -47,7 +47,7 @@ describe("appendTaxProbeRow", () => {
 	});
 	afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-	it("writes JSONL under .ecode/ws-tax-probe and gitignores it", () => {
+	it("writes JSONL under .taucode/ws-tax-probe and gitignores it", () => {
 		const file = appendTaxProbeRow(
 			{
 				type: "ws_tax_probe_turn",
@@ -61,9 +61,9 @@ describe("appendTaxProbeRow", () => {
 			dir,
 		);
 
-		expect(file).toBe(join(dir, ".ecode", "ws-tax-probe", "s1.jsonl"));
+		expect(file).toBe(join(dir, ".taucode", "ws-tax-probe", "s1.jsonl"));
 		expect(readFileSync(file, "utf-8")).toContain('"output_tokens":10');
-		expect(readFileSync(join(dir, ".gitignore"), "utf-8")).toContain(".ecode/ws-tax-probe/");
+		expect(readFileSync(join(dir, ".gitignore"), "utf-8")).toContain(".taucode/ws-tax-probe/");
 		expect(existsSync(file)).toBe(true);
 	});
 });

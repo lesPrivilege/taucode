@@ -3,5 +3,6 @@ pi/
 **/dist/
 .DS_Store
 .claude/settings.local.json
+.taucode-agent/
 .ecode-agent/
 *.swp

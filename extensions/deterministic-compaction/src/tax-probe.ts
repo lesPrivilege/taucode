@@ -39,7 +39,7 @@ export class TaxProbeCollector {
 export type TaxProbeWriter = (row: TaxProbeTurn, cwd: string) => string;
 
 export function appendTaxProbeRow(row: TaxProbeTurn, cwd: string): string {
-	const dir = join(cwd, ".ecode", "ws-tax-probe");
+	const dir = join(cwd, ".taucode", "ws-tax-probe");
 	mkdirSync(dir, { recursive: true });
 	ensureTaxProbeGitignore(cwd);
 	const file = join(dir, `${row.session_id}.jsonl`);
@@ -80,7 +80,7 @@ function isDeclarationOnlyTurn(content: unknown): boolean {
 
 function ensureTaxProbeGitignore(cwd: string): void {
 	const path = join(cwd, ".gitignore");
-	const entry = ".ecode/ws-tax-probe/";
+	const entry = ".taucode/ws-tax-probe/";
 	if (!existsSync(path)) {
 		writeFileSync(path, `${entry}\n`, "utf-8");
 		return;

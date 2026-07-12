@@ -24,7 +24,7 @@ export class LedgerPersistSink {
 		private readonly cwd: string,
 		private readonly sessionId: string,
 	) {
-		this.ledgerDir = join(cwd, ".ecode", "ledger");
+		this.ledgerDir = join(cwd, ".taucode", "ledger");
 	}
 
 	append(record: PersistableLedgerRecord): string {
@@ -53,7 +53,7 @@ export function persistableFromSemanticEvent(event: SemanticToolEvent): Persista
 
 function ensureLedgerGitignore(cwd: string): void {
 	const path = join(cwd, ".gitignore");
-	const entry = ".ecode/ledger/";
+	const entry = ".taucode/ledger/";
 	if (!existsSync(path)) {
 		writeFileSync(path, `${entry}\n`, "utf-8");
 		return;

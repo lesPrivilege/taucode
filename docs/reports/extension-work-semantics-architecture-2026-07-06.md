@@ -67,7 +67,7 @@ ledger, but it has the correct address space.
 `adapter.ts` matters more than it looks. It keeps assistant `thinking` blocks in
 the core transcript conversion. For DeepSeek sessions, work-semantics sidecars
 must not be smuggled into reasoning content; provider replay semantics need to
-stay separate from ecode's ledger semantics.
+stay separate from taucode's ledger semantics.
 
 ## Coupling Risks
 
@@ -265,7 +265,7 @@ Acceptance:
 
 ### Step 2: Sidecar Parser Behind A Flag
 
-Add `ECODE_WORK_SEMANTICS_DECLARATION=1`.
+Add `TAUCODE_WORK_SEMANTICS_DECLARATION=1`.
 
 Start with sideband parsing only: detect and store declarations, but do not let
 them change projection. This gives calibration data before policy risk.

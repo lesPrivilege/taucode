@@ -60,7 +60,7 @@ interface SmokeHarness {
 }
 
 async function buildHarness(compactAfterInputTokens: number): Promise<SmokeHarness> {
-	const tempDir = join(tmpdir(), `pi-ecode-smoke-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+	const tempDir = join(tmpdir(), `pi-taucode-smoke-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	mkdirSync(tempDir, { recursive: true });
 	const agentDir = join(tempDir, "agent");
 	mkdirSync(agentDir, { recursive: true });

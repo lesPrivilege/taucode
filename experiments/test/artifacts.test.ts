@@ -11,7 +11,7 @@ let snapshot: string;
 let results: string;
 
 beforeEach(() => {
-	root = mkdtempSync(join(tmpdir(), "ecode-artifacts-"));
+	root = mkdtempSync(join(tmpdir(), "taucode-artifacts-"));
 	workspace = join(root, "workspace");
 	snapshot = join(root, "snapshot");
 	results = join(root, "results");

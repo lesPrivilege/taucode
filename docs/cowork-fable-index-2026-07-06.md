@@ -66,8 +66,8 @@ R2 is complete:
 
 Implementation state:
 
-- V2 trust protocol exists behind `ECODE_TRUST_PROTOCOL`.
-- V3 work-semantic anchor exists behind `ECODE_SEMANTIC_ANCHOR`.
+- V2 trust protocol exists behind `TAUCODE_TRUST_PROTOCOL`.
+- V3 work-semantic anchor exists behind `TAUCODE_SEMANTIC_ANCHOR`.
 - Current anchors are harness-authored structured extraction from tool events.
 - Model-authored JSON work semantics are not implemented yet.
 - `extension.ts` is now the main architectural pressure point.

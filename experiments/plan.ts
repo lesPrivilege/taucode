@@ -100,7 +100,7 @@ function main() {
 	const lines: string[] = [];
 	const manifest: string[] = [];
 
-	lines.push("# ecode experiments — run plan");
+	lines.push("# taucode experiments — run plan");
 	lines.push("#");
 	lines.push("# The planner does not call any provider. Run the commands below, then");
 	lines.push("# fill the manual-review fields and run `compare`.");

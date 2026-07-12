@@ -1,7 +1,7 @@
 # DF0 Triage Corpus — re-read / confirmation pathologies
 
 2026-07-05. Categorized samples of token-loss behavior observed while dogfooding
-`ecode`. Feeds `note-view-based-context.md` (intent declaration + semantic ledger +
+`taucode`. Feeds `note-view-based-context.md` (intent declaration + semantic ledger +
 trust protocol) and the net-save question. Advance-the-seed trigger: **≥5 clean
 entries.**
 

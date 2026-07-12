@@ -143,7 +143,7 @@ export function createSidebandSummarizer(provider: ExperimentProvider): Sideband
 		const message = await completeSimple(provider.model, context, {
 			maxTokens: 512,
 			temperature: 0,
-			sessionId: `ecode-sideband-${input.turn}-${input.hash}`,
+			sessionId: `taucode-sideband-${input.turn}-${input.hash}`,
 		});
 		const text = assistantText(message).trim();
 		if (!text) throw new Error("Sideband summarizer returned empty text.");

@@ -1,10 +1,10 @@
 /**
- * Single re-export barrel for @ecode/compaction-core.
+ * Single re-export barrel for @taucode/compaction-core.
  *
  * Why a barrel instead of importing the package by name everywhere:
  *   pi loads an external extension's `.ts` through jiti and resolves the
  *   `@earendil-works/*` packages via its own alias map — but NOT third-party
- *   packages like `@ecode/compaction-core`. And `@ecode/compaction-core`'s
+ *   packages like `@taucode/compaction-core`. And `@taucode/compaction-core`'s
  *   published `exports` currently point at `./dist/index.js`, which its build
  *   does not actually emit at that path (its tsconfig `rootDir: "."` +
  *   `include: ["src","test"]` emits `./dist/src/index.js` instead) — so

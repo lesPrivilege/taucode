@@ -58,7 +58,7 @@ Engineering 第一手)**
 - 本项目工作方式即答卷:Cowork(裁决)+ Claude Code(核心实现)+
   Codex(执行/验收)+ Grok(调研核证)+ DeepSeek(被试与日常),
   多 agent 分工协议成文并经两次事故修订(`loop-protocol.md`);
-- 产物审计在 ecode 自身内完成(投影 67%、CH 98.1% 同屏)——工具自证。
+- 产物审计在 taucode 自身内完成(投影 67%、CH 98.1% 同屏)——工具自证。
 
 **要求 3(vibe coding)**:全 repo 代码由 agent 按 packet TDD 写成,
 packet(spec 即 prompt)全部在 `GOALS.md` 可查——含验收与修订史。

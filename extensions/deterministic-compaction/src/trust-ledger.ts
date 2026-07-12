@@ -5,7 +5,7 @@ import { SemanticLedger, type LedgerEntry } from "./semantic-ledger.js";
  * V2-TP trust ledger (task 1 + 2). Session-scoped, in-memory record of the
  * latest content hash per path, populated from read/bash results (views) and
  * edit/write results (evidence). Never persisted, never mutates the tool result
- * itself. All use sits behind ECODE_TRUST_PROTOCOL.
+ * itself. All use sits behind TAUCODE_TRUST_PROTOCOL.
  */
 
 /** SHA-256 of the content, truncated to 8 hex chars (taucode hashline alignment). */

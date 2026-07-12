@@ -18,7 +18,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, ToolResultMessage, UserMessage } from "@earendil-works/pi-ai";
-import { compactCodeProductions } from "@ecode/compaction-core";
+import { compactCodeProductions } from "@taucode/compaction-core";
 import { toCore } from "../src/adapter.js";
 import { PI_COMPACTION_INJECTION, projectContext } from "../src/projection.js";
 

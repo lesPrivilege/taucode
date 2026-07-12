@@ -10,7 +10,7 @@ sessions:
 - packets: G2-R1, G2-E1, G2-D1;
 - arm: B with `--context-window 48000`;
 - repeats: n=3;
-- all runs unset `ECODE_TRUST_PROTOCOL`, `ECODE_SEMANTIC_ANCHOR`, and `ECODE_ANCHOR_ACCEPTANCE`.
+- all runs unset `TAUCODE_TRUST_PROTOCOL`, `TAUCODE_SEMANTIC_ANCHOR`, and `TAUCODE_ANCHOR_ACCEPTANCE`.
 
 Snapshot: `experiments/snapshots/taucode`.
 `manifestHash=922aa885e628f69f5174219adc443ad14778f4f1dd7bc3ac120c0c47c0b761ba`.
@@ -55,7 +55,7 @@ Execution finished: 2026-07-05T19:35:46.001Z
 - Provider-error retries: 0.
 - Structural issues found by independent JSONL scan: 0.
 - All runs have `provider=deepseek`, `data_kind=g2-packet-run`, and `provider_context_window=48000`.
-- `ECODE_TRUST_PROTOCOL`, `ECODE_SEMANTIC_ANCHOR`, and `ECODE_ANCHOR_ACCEPTANCE` were unset by command wrapper; meta scan found no anchor targets.
+- `TAUCODE_TRUST_PROTOCOL`, `TAUCODE_SEMANTIC_ANCHOR`, and `TAUCODE_ANCHOR_ACCEPTANCE` were unset by command wrapper; meta scan found no anchor targets.
 - R1/D1 snapshot runs all matched `manifestHash=922aa885e628f69f5174219adc443ad14778f4f1dd7bc3ac120c0c47c0b761ba`.
 - E1 runs used empty workspaces.
 - Every run has an artifact row.

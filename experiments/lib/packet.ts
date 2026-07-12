@@ -2,7 +2,7 @@
  * packet.ts — turn a human-authored G2 task packet (`docs/g2-task-packets.md`)
  * into a runnable `Scenario`.
  *
- * This is the ecode-side equivalent of taucode's
+ * This is the taucode-side equivalent of taucode's
  * `scripts/dogfood-task.mjs prompt --packet` (the missing bridge the 2026-07-05
  * harness review flagged): a packet `.md` had no way to become a `Scenario` with a
  * real prompt, so none of the six G2 packets could run through `run.ts --scenario`.
@@ -11,14 +11,14 @@
  * `extractSection`/`extractListItems`/`extractPacketMetadata` (fields:
  * Goal/Read first/Allowed/Non-goals/Validation) and `acceptanceLines`/
  * `parseAcceptance` (the static-check grammar), RECONCILED for the two format
- * differences ecode's packets actually have vs taucode's template — verified
+ * differences taucode's packets actually have vs taucode's template — verified
  * against the real doc, not assumed:
  *
- *   1. Fullwidth colon. ecode headings use `：` (U+FF1A) and put the field VALUE
+ *   1. Fullwidth colon. taucode headings use `：` (U+FF1A) and put the field VALUE
  *      inline on the same line (`Goal：把 910 行…`), whereas taucode uses ASCII `:`
  *      with the value on the following line(s). Both are accepted here.
  *   2. Packet sectioning. taucode packets are one file each, titled `# Dogfood
- *      Task: <slug>`. ecode ships all six in ONE doc, each a `## G2-<id> · <title>`
+ *      Task: <slug>`. taucode ships all six in ONE doc, each a `## G2-<id> · <title>`
  *      section, and `Acceptance：` is a fullwidth-colon FIELD line, not a
  *      `## Acceptance` ATX heading. So a packet is addressed by id (`G2-R2`) and
  *      sliced out of the shared doc; the acceptance list is the bullet run that
@@ -122,7 +122,7 @@ function stripCodeFence(value: string): string {
 
 /**
  * Clean a single LIST item (a file path / non-goal clause). Beyond stripCodeFence,
- * ecode list items often carry a leading backtick-fenced path followed by a
+ * taucode list items often carry a leading backtick-fenced path followed by a
  * parenthetical annotation, e.g. `` `foo.ts`（风格基准） ``. Prefer the fenced
  * path when present; otherwise drop a trailing （…） annotation. Falls back to the
  * fence-stripped whole. This only tidies the STRUCTURED fields — the verbatim
@@ -189,16 +189,16 @@ export function listPacketIds(markdown: string): string[] {
 // --- field extraction (mirrors extractSection / extractListItems) --------------
 
 /**
- * A field-heading matcher. ecode fields are `<Name>：<value…>` (fullwidth colon,
+ * A field-heading matcher. taucode fields are `<Name>：<value…>` (fullwidth colon,
  * value inline); taucode's are `<Name>:` / `## <Name>` (value on next lines). This
- * matches both styles and, for the ecode style, captures the inline remainder.
+ * matches both styles and, for the taucode style, captures the inline remainder.
  *
  * `names` is an alternation of accepted heading spellings, e.g.
  * `Read first|Read` — matched case-insensitively.
  */
 function fieldRegex(names: string): RegExp {
 	// Optional leading "## ", the name, then either a fullwidth or ASCII colon.
-	// Group 1 = the inline remainder (ecode style) or "" (taucode style).
+	// Group 1 = the inline remainder (taucode style) or "" (taucode style).
 	return new RegExp(`^(?:#{1,3}\\s*)?(?:${names})\\s*[:：]\\s*(.*)$`, "i");
 }
 
@@ -207,7 +207,7 @@ const ANY_FIELD_NAMES = "Goal|Read first|Read|Allowed files|Allowed|Non-goals|Va
 const FIELD_TERMINATOR = new RegExp(`^(?:#{1,3}\\s+\\S|(?:${ANY_FIELD_NAMES})\\s*[:：])`, "i");
 
 /**
- * Extract a field's text. Returns the inline remainder (ecode style) joined with
+ * Extract a field's text. Returns the inline remainder (taucode style) joined with
  * any following body lines up to the next field/heading (taucode style). Mirrors
  * extractSection but colon-and-inline aware.
  */
@@ -227,7 +227,7 @@ function extractField(markdown: string, names: string): string {
 }
 
 /**
- * Extract a field as a list. ecode packets write list-style fields two ways:
+ * Extract a field as a list. taucode packets write list-style fields two ways:
  *   - inline, delimiter-separated: `Read first：a、b、c` (Chinese comma 、 or ,)
  *   - bullet lines: `- a` / `- b`
  * Both are supported; each item is code-fence-stripped. Mirrors extractListItems.
@@ -252,7 +252,7 @@ function extractFieldList(markdown: string, names: string): string[] {
 
 /**
  * The bullet run under the `Acceptance：` field, up to the next `##` heading. In
- * ecode's doc `Acceptance：` is a field line (fullwidth colon), not `## Acceptance`,
+ * taucode's doc `Acceptance：` is a field line (fullwidth colon), not `## Acceptance`,
  * so this keys on the field line then collects the following `- …` bullets — the
  * semantic equivalent of taucode's acceptanceLines.
  */

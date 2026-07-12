@@ -45,7 +45,7 @@ async function driveArm(armId: "A" | "B" | "C" | "D", compactAfter: number): Pro
 	const provider = resolveProvider("mock", scenario);
 	const projectionConfig = { compactAfterInputTokens: compactAfter, compactionOptions: { keepRecentAssistantMessages: 3 } };
 
-	const tempDir = join(tmpdir(), `ecode-runsmoke-${armId}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+	const tempDir = join(tmpdir(), `taucode-runsmoke-${armId}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	mkdirSync(tempDir, { recursive: true });
 	const agentDir = join(tempDir, "agent");
 	mkdirSync(agentDir, { recursive: true });

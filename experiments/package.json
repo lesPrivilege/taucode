@@ -1,5 +1,5 @@
 {
-  "name": "@ecode/experiments",
+  "name": "@taucode/experiments",
   "version": "0.1.0",
   "private": true,
   "description": "4-arm (A/B/C/D) compaction experiment harness for pi: plan/run/compare entry points over deterministic-compaction, mock fixtures, and real DeepSeek/OpenAI-compatible providers.",
@@ -20,12 +20,12 @@
     "@earendil-works/pi-agent-core": "*",
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*",
-    "@ecode/compaction-core": "*"
+    "@taucode/compaction-core": "*"
   },
   "peerDependenciesMeta": {
     "@earendil-works/pi-agent-core": { "optional": true },
     "@earendil-works/pi-ai": { "optional": true },
     "@earendil-works/pi-coding-agent": { "optional": true },
-    "@ecode/compaction-core": { "optional": true }
+    "@taucode/compaction-core": { "optional": true }
   }
 }

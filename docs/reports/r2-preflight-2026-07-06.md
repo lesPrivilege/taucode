@@ -7,7 +7,7 @@ Gate-release checklist executed by Codex:
 1. R1:C rerun with artifact retention and pending command logs.
 2. B-fixed proves native compaction can trigger under a comparable context window.
 3. D1 low-threshold probe proves negative-zone compaction actually triggers for C/D.
-4. Env wiring prep for C''/anchor: `ECODE_ANCHOR_ACCEPTANCE` is filled from packet `file-exists` checks when `ECODE_SEMANTIC_ANCHOR=1`.
+4. Env wiring prep for C''/anchor: `TAUCODE_ANCHOR_ACCEPTANCE` is filled from packet `file-exists` checks when `TAUCODE_SEMANTIC_ANCHOR=1`.
 
 ## Harness prep
 
@@ -15,14 +15,14 @@ Gate-release checklist executed by Codex:
 - `compare.ts` now labels DeepSeek packet data as real workload data, not synthetic smoke fixtures.
 - `export-review.ts` can generate local review markdown from a run/session JSONL and matching ambient rows.
 - B-fixed support: `run.ts --context-window <n>` overrides provider model `contextWindow`; DeepSeek model override verified in meta as `provider_context_window`.
-- Anchor env support: experiments test confirms `ECODE_SEMANTIC_ANCHOR=1` injects file-exists targets into `ECODE_ANCHOR_ACCEPTANCE`.
+- Anchor env support: experiments test confirms `TAUCODE_SEMANTIC_ANCHOR=1` injects file-exists targets into `TAUCODE_ANCHOR_ACCEPTANCE`.
 
 Verification before runs:
 
 - `npm test -- --run` in `experiments`: 9 files, 47 tests passed.
 - `DEEPSEEK_API_KEY` non-empty, value not printed.
 - Snapshot: `experiments/snapshots/taucode`, `manifestHash=922aa885e628f69f5174219adc443ad14778f4f1dd7bc3ac120c0c47c0b761ba`.
-- All preflight runs used `env -u ECODE_TRUST_PROTOCOL -u ECODE_SEMANTIC_ANCHOR -u ECODE_ANCHOR_ACCEPTANCE`.
+- All preflight runs used `env -u TAUCODE_TRUST_PROTOCOL -u TAUCODE_SEMANTIC_ANCHOR -u TAUCODE_ANCHOR_ACCEPTANCE`.
 
 ## Runs
 

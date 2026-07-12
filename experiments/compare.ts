@@ -124,7 +124,7 @@ function main() {
 	}
 
 	const out: string[] = [];
-	out.push(`# ecode experiments — comparison report`);
+	out.push(`# taucode experiments — comparison report`);
 	out.push(`Baseline: arm ${baseline.arm} (${baseline.file})`);
 	out.push(`Data: ${dataLabel(runs)}`);
 	out.push("");

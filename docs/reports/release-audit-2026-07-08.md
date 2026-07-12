@@ -1,21 +1,21 @@
 RELEASE-AUDIT — 2026-07-08
-`ecode` — long-life-roadmap 待做 16
+`taucode` — long-life-roadmap 待做 16
 
 Gates: docs/long-life-roadmap.md H5 ("release path A when install friction
 is low and tests are green from a fresh checkout") and the A1 decision point
 in docs/note-release-paths.md ("approve running RELEASE-AUDIT"). This run
 is that audit.
 
-Method: `git clone file:///Users/lesprivilege/Projects/ecode ecode-fresh`
-stands in for a real user's `git clone https://github.com/<org>/ecode.git`.
-`file://` only removes network variance from the *ecode* clone step itself —
+Method: `git clone file:///Users/lesprivilege/Projects/taucode taucode-fresh`
+stands in for a real user's `git clone https://github.com/<org>/taucode.git`.
+`file://` only removes network variance from the *taucode* clone step itself —
 it does not change what npm resolves (npm still hit the real registry over
 the network throughout). A real GitHub clone would behave identically from
 this point on.
 
 All work happened under
-`/private/tmp/claude-501/-Users-lesprivilege-Projects-ecode/9b330169-6a95-4e53-9178-074b4c61541b/scratchpad/release-audit/`.
-`/Users/lesprivilege/Projects/ecode` and its `pi/` fork were only ever read
+`/private/tmp/claude-501/-Users-lesprivilege-Projects-taucode/9b330169-6a95-4e53-9178-074b4c61541b/scratchpad/release-audit/`.
+`/Users/lesprivilege/Projects/taucode` and its `pi/` fork were only ever read
 from (via `file://`); both were verified clean (`git status`) at the end of
 the run. Nothing was committed, nothing was published, nothing left the
 machine except ordinary `npm install` registry traffic and pi's own
@@ -44,7 +44,7 @@ narrow and fully diagnosed, not architectural:
   `vitest.config.ts` and `experiments/tsconfig.json` already have. Fix
   verified: add the one line. Errors go 10 → 0. See Finding F4.
 - **Z — the `pi/` dependency is undocumented, not just gitignored.** Once X
-  and Y are fixed, a stranger who clones `ecode` and correctly works around
+  and Y are fixed, a stranger who clones `taucode` and correctly works around
   the install failure will *still* watch every extension/experiments test
   that touches pi fail with `Cannot find package '@earendil-works/pi-*'`,
   with zero guidance from README/CONTRIBUTING about cloning or building a
@@ -63,19 +63,19 @@ not a redesign.
 
 | # | Step | Command | Outcome | Time |
 |---|---|---|---|---|
-| 1 | Fresh checkout stand-in | `git clone file://…/ecode ecode-fresh` | PASS | 0.28s |
+| 1 | Fresh checkout stand-in | `git clone file://…/taucode taucode-fresh` | PASS | 0.28s |
 | 2 | Confirm `pi/` absent (gitignored) | `ls pi` | PASS (absent, as designed) | instant |
 | 3 | compaction-core install | `npm ci` | PASS — 45 pkgs | 1.8s |
 | 4 | compaction-core test | `npm test` | PASS — 40/40 tests, 2/2 files | 1.8s |
 | 5 | compaction-core typecheck | `npm run typecheck` | PASS — 0 errors | 0.9s |
 | 6 | compaction-core build (bonus — publish readiness) | `npm run build` | PASS — `dist/` matches package.json `files` | 0.4s |
 | 7 | compaction-core zero-dep verification | `npm ls --prod` | PASS — empty tree | instant |
-| 8 | extension install (naive) | `npm ci` | **FAIL** — E404 on `@ecode/compaction-core` | 18.4s |
+| 8 | extension install (naive) | `npm ci` | **FAIL** — E404 on `@taucode/compaction-core` | 18.4s |
 | 9 | extension install (naive, alt) | `npm install` | **FAIL** — same E404 | 1.2s |
 | 10 | extension install (workaround) | `npm install --legacy-peer-deps` | PASS — 46 pkgs, 0 vulnerabilities | 0.9s |
 | 11 | extension test, pi/ absent | `npm test` | **FAIL** — 17/27 files fail (import errors); the 10 files that could run: 89/89 tests pass | 2.7s |
 | 12 | extension typecheck, pi/ absent | `npm run typecheck` | **FAIL** — cascading `TS2307` + missing Node ambient types | ~1s |
-| 13 | Clone pi fork (2nd manual step) | `git clone file://…/ecode/pi pi` | PASS | 0.29s |
+| 13 | Clone pi fork (2nd manual step) | `git clone file://…/taucode/pi pi` | PASS | 0.29s |
 | 14 | pi workspace install | `npm ci` (at `pi/` root) | PASS — 352 pkgs, 0 vulnerabilities (real registry hit) | 7.6s |
 | 15 | extension test, pi/ present | `npm test` | PASS — 27/27 files, 196/196 tests | 5.6s |
 | 16 | extension typecheck, pi/ present (unpatched) | `npm run typecheck` | **FAIL** — 10 errors, single root cause (F4) | 5.1s |
@@ -87,10 +87,10 @@ not a redesign.
 | 22 | experiments typecheck, pi/ absent | `npm run typecheck` | **FAIL** — 233 errors (35 direct `@earendil-works/*` + cascade) | ~1s |
 | 23 | experiments test, pi/ present | `npm test` | PASS — 10/10 files, 72/72 tests | 9.3s |
 | 24 | experiments typecheck, pi/ present | `npm run typecheck` | PASS — 0 errors (tsconfig here was already correct) | 5.7s |
-| 25 | Launcher smoke, pi cloned but **not built** | `./bin/ecode --help` (no API key) | **FAIL gracefully** — actionable message, exit 1 | instant |
+| 25 | Launcher smoke, pi cloned but **not built** | `./bin/taucode --help` (no API key) | **FAIL gracefully** — actionable message, exit 1 | instant |
 | 26 | Build pi (3rd manual step, launcher-only) | `npm run build` (at `pi/` root) | PASS — but see Finding F6 (live network fetch, mutates 8 tracked files) | 8.6s |
-| 27 | Launcher smoke, pi built | `./bin/ecode --help` (no API key) | PASS — full help text, clean "no provider key" warning, exit 0 | instant |
-| 28 | Launcher smoke, version | `./bin/ecode --version` (no API key) | PASS — prints `0.80.3`, exit 0 | instant |
+| 27 | Launcher smoke, pi built | `./bin/taucode --help` (no API key) | PASS — full help text, clean "no provider key" warning, exit 0 | instant |
+| 28 | Launcher smoke, version | `./bin/taucode --version` (no API key) | PASS — prints `0.80.3`, exit 0 | instant |
 | 29 | *(isolated-copy verification)* surgical install fix | `npm install` (plain, `peerDependenciesMeta` patch applied, no lockfile) | PASS — 45 pkgs, 0 vulnerabilities, **zero flags needed** | 41s |
 
 Total command execution time: well under 2 minutes. Total wall-clock for
@@ -107,11 +107,11 @@ Both package.json files declare:
   "@earendil-works/pi-agent-core": "*",
   "@earendil-works/pi-ai": "*",
   "@earendil-works/pi-coding-agent": "*",
-  "@ecode/compaction-core": "*"
+  "@taucode/compaction-core": "*"
 }
 ```
 
-None of these four packages are published to npm (`@ecode/compaction-core`
+None of these four packages are published to npm (`@taucode/compaction-core`
 is the one built in this very repo; the three `@earendil-works/*` names are
 pi's own workspace packages, also unpublished). Since npm 7, plain
 `npm install`/`npm ci` auto-installs peer dependencies unless told
@@ -120,7 +120,7 @@ gets:
 
 ```
 npm error code E404
-npm error 404 Not Found - GET https://registry.npmjs.org/@ecode%2fcompaction-core - Not found
+npm error 404 Not Found - GET https://registry.npmjs.org/@taucode%2fcompaction-core - Not found
 ```
 
 This aborts the **entire** install — not even `typescript`/`vitest`
@@ -147,7 +147,7 @@ peer optional:
   "@earendil-works/pi-agent-core": { "optional": true },
   "@earendil-works/pi-ai": { "optional": true },
   "@earendil-works/pi-coding-agent": { "optional": true },
-  "@ecode/compaction-core": { "optional": true }
+  "@taucode/compaction-core": { "optional": true }
 }
 ```
 
@@ -184,11 +184,11 @@ which both already pin `vitest@^4.1.9` and report 0 vulnerabilities.
 Bumping compaction-core to vitest 4 would remove the only vulnerability
 noise in this whole audit and align the three packages' toolchains.
 
-### F3 — `pi/` must be manually cloned, installed, and (for the launcher only) built — none of this is documented in `ecode`'s own README/CONTRIBUTING
+### F3 — `pi/` must be manually cloned, installed, and (for the launcher only) built — none of this is documented in `taucode`'s own README/CONTRIBUTING
 
 The `pi/` fork is deliberately gitignored (`pi/` in `.gitignore`, by
 design — it's a separate fork of `badlogic/pi-mono`). But nothing at the
-`ecode` repo root tells a stranger they need it, or how to get it. The only
+`taucode` repo root tells a stranger they need it, or how to get it. The only
 place this is discoverable is a source comment inside
 `extensions/deterministic-compaction/vitest.config.ts`:
 
@@ -196,21 +196,21 @@ place this is discoverable is a source comment inside
 > Transitive deps … resolve from the pi/packages/coding-agent/node_modules
 > tree that owns the resolved sources."
 
-A stranger who clones `ecode`, fixes the F1 install failure, and runs
+A stranger who clones `taucode`, fixes the F1 install failure, and runs
 `npm test` in the extension or experiments folder will watch the majority
 of test files fail with `Cannot find package '@earendil-works/pi-tui'`
 (and siblings) with no pointer back to a fix. The three concrete steps
 that actually resolve it:
 
 1. `git clone <pi-fork-url> pi` as a sibling of the repo's own root
-   (`ecode-fresh/pi`, i.e. one level below wherever `extensions/` and
+   (`taucode-fresh/pi`, i.e. one level below wherever `extensions/` and
    `experiments/` live).
 2. `npm ci` inside `pi/` (it's a real npm-workspaces monorepo — root
    `package.json` has a `workspaces` field for `packages/*`; this step
    pulls 352 packages from the real registry, ~7.6s here, 0 vulnerabilities).
 3. (Launcher only, not needed for either package's own test suite) `npm run
    build` inside `pi/` — this is what produces
-   `pi/packages/coding-agent/dist/cli.js`, which `bin/ecode` hard-requires.
+   `pi/packages/coding-agent/dist/cli.js`, which `bin/taucode` hard-requires.
 
 None of 1–3 appear in `README.md`, `GOALS.md`, or any file a first-time
 visitor would naturally open. `docs/g0-survey.md` documents installing
@@ -219,7 +219,7 @@ visitor would naturally open. `docs/g0-survey.md` documents installing
 scheme for 4-arm experiment packets — neither covers this.
 
 Recommendation: a short "Development setup" section in the top-level
-README (or a CONTRIBUTING.md, currently absent at the `ecode` root) stating
+README (or a CONTRIBUTING.md, currently absent at the `taucode` root) stating
 steps 1–3 explicitly would close this gap for near-zero cost.
 
 ### F4 — `extensions/deterministic-compaction`'s `npm run typecheck` fails even with `pi/` fully cloned and installed — one missing `tsconfig.json` line (fixed and verified)
@@ -316,13 +316,13 @@ don't need pi *built*, only cloned+installed, per F3), but it does gate
 the *launcher* smoke test and is worth flagging since it's a genuine
 surprise for anyone building pi fresh.
 
-### F7 — Launcher (`bin/ecode`) behaves correctly and gracefully in both states
+### F7 — Launcher (`bin/taucode`) behaves correctly and gracefully in both states
 
-`bin/ecode` checks for `pi/packages/coding-agent/dist/cli.js` before doing
+`bin/taucode` checks for `pi/packages/coding-agent/dist/cli.js` before doing
 anything else:
 
 - **Before `pi/` is built:** exits 1 with
-  `ecode: pi CLI not built. Run: (cd ".../pi" && npm install && npm run build)`
+  `taucode: pi CLI not built. Run: (cd ".../pi" && npm install && npm run build)`
   — no stack trace, exact remediation command included. This is the one
   piece of onboarding guidance that already exists in the repo (in a
   shell script, not docs) — it's good, but it only covers the *build* step,
@@ -331,11 +331,11 @@ anything else:
 - **After `pi/` is built, with no API key exported:** `--help` and
   `--version` both exit 0. The script's own provider-detection logic
   prints a clear, non-fatal warning to stderr
-  (`ecode: no provider key detected (checked: DEEPSEEK_API_KEY,
+  (`taucode: no provider key detected (checked: DEEPSEEK_API_KEY,
   MIMO_API_KEY+MIMO_BASE_URL).`) and still proceeds to hand off to the
   real `pi` CLI, which prints full `--help` text or the version string as
   appropriate. The launcher's idempotent self-heal (symlinking
-  `.ecode-agent/extensions/deterministic-compaction` into place on every
+  `.taucode-agent/extensions/deterministic-compaction` into place on every
   invocation) also fired correctly and was verified on disk.
 
 No issues found in the launcher itself — it is the best-behaved piece of
@@ -356,7 +356,7 @@ the whole audit.
    before `npm run typecheck` is green, even with everything above done
    (F4) — this is a real, pre-existing bug, independent of the clone
    choreography.
-5. To smoke-test the actual `ecode` launcher (as opposed to the packages'
+5. To smoke-test the actual `taucode` launcher (as opposed to the packages'
    test suites), `pi/` must additionally be **built**
    (`npm run build` at its root) — a third manual step, only needed for
    this one purpose (F3, F7).
@@ -383,7 +383,7 @@ the whole audit.
 2. Add `"@earendil-works/pi-ai/oauth": ["../../pi/packages/ai/src/oauth.ts"]`
    to `extensions/deterministic-compaction/tsconfig.json`'s `"paths"` —
    verified fix, Finding F4.
-3. Write down, in the `ecode` README or a new CONTRIBUTING.md, the three
+3. Write down, in the `taucode` README or a new CONTRIBUTING.md, the three
    commands from Finding F3 (clone pi as a sibling, `npm ci` inside it,
    `npm run build` inside it if you want to run the launcher) — a
    documentation task, not a code change.
@@ -411,6 +411,6 @@ report:
 - `pi-build.log`
 
 Scratch clone (disposable, not part of the deliverable):
-`ecode-fresh/` (~561 MB total, of which `pi/node_modules` alone is 333 MB).
-Both `/Users/lesprivilege/Projects/ecode` and its `pi/` fork were confirmed
+`taucode-fresh/` (~561 MB total, of which `pi/node_modules` alone is 333 MB).
+Both `/Users/lesprivilege/Projects/taucode` and its `pi/` fork were confirmed
 untouched (`git status` clean) at the end of this run.

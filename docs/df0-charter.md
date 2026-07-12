@@ -13,7 +13,7 @@ compactable-content 的实际来源。轻量测试永远到不了这里：banana
 
 ## 做法
 
-用 `ecode` 做真实日常工作（本 repo 的工程杂活、taucode 只读分析、
+用 `taucode` 做真实日常工作（本 repo 的工程杂活、taucode 只读分析、
 其他项目均可），**不设剧本**，但保证 read / edit / bash 三类高频出现。
 参数保持推荐档（32k / keep=3），不手动压阈值——要的是**自然越阈**。
 

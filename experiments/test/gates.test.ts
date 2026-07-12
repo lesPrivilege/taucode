@@ -20,7 +20,7 @@ import { summarizeRun } from "../lib/read-run.js";
 
 let dir: string;
 beforeAll(() => {
-	dir = mkdtempSync(join(tmpdir(), "ecode-gates-"));
+	dir = mkdtempSync(join(tmpdir(), "taucode-gates-"));
 });
 afterAll(() => {
 	rmSync(dir, { recursive: true, force: true });

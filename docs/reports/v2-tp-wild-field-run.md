@@ -4,7 +4,7 @@
 
 ## Protocol
 
-- Extension: `deterministic-compaction` with `ECODE_TRUST_PROTOCOL=1`
+- Extension: `deterministic-compaction` with `TAUCODE_TRUST_PROTOCOL=1`
 - Model: DeepSeek v4-flash (via pi, standard DF0 routing)
 - Operator: human runs prompts in a separate df terminal; Opus session analyzes returns
 - Goal: confirm stale-view hints fire correctly, prefix cache remains stable, model exhibits correct temporal reasoning when hints are present
@@ -21,7 +21,7 @@
 
 ### Round 2 — Flag confirmation
 
-Ambient JSONL from prior sessions showed `trust_protocol_enabled: false` (those sessions predated the env export). Confirmed `echo $ECODE_TRUST_PROTOCOL` = 1 in the active df terminal. Proceeded.
+Ambient JSONL from prior sessions showed `trust_protocol_enabled: false` (those sessions predated the env export). Confirmed `echo $TAUCODE_TRUST_PROTOCOL` = 1 in the active df terminal. Proceeded.
 
 ### Round 3 — Hint fires, model obeys (decisive)
 

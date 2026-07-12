@@ -1,8 +1,8 @@
 # Compaction / Summarization Strategy Research
 
 2026-07-06. R2 has finished. This note updates the earlier landscape with real
-ecode data and current provider/harness practice. It answers five questions:
-what mainstream strategies exist, what ecode built, what R2 showed, where the
+taucode data and current provider/harness practice. It answers five questions:
+what mainstream strategies exist, what taucode built, what R2 showed, where the
 boundaries are, and what to validate next.
 
 ## Executive Take
@@ -13,7 +13,7 @@ frameworks also ship client-side pruning, sliding-window, and LLM-summary
 strategies. The industry direction is clear: context management is no longer a
 nice-to-have harness hack, it is a first-class runtime feature.
 
-ecode's contribution is different: it is not "another summary." It is a
+taucode's contribution is different: it is not "another summary." It is a
 deterministic, send-time projection strategy for an ecosystem without
 server-side compaction but with observable prefix-cache economics. It keeps
 provenance mechanically checkable with path/hash/diffstat evidence and measures
@@ -43,11 +43,11 @@ R2 gives the first clean local answer:
 | Tool-result clearing / pruning | Remove or replace old tool outputs while keeping recent turns | Cheap, predictable, avoids giant stale results | Can destroy prefix cache at the edit point; may lose latent detail | Anthropic context editing, Claude context engineering guidance |
 | Sliding window / truncation | Drop oldest messages or keep a fixed recent window | Simple and robust against overflow | Loses early constraints and hidden dependencies | ADK/Microsoft-style framework primitives |
 | External memory | Move durable state to files, vector DB, graph, or session store | Separates working context from long-term facts | Retrieval policy becomes the hard problem | Agent memory systems, project-state files |
-| Deterministic extractive projection | Replace large known structures with deterministic summaries, keep path/hash/head-tail evidence | Reproducible, cheap, auditable, cache-aware | Weak on implicit work semantics unless anchors/checkpoints fill the gap | ecode C arm |
+| Deterministic extractive projection | Replace large known structures with deterministic summaries, keep path/hash/head-tail evidence | Reproducible, cheap, auditable, cache-aware | Weak on implicit work semantics unless anchors/checkpoints fill the gap | taucode C arm |
 
-## What ecode Built
+## What taucode Built
 
-ecode built four comparable arms in the same pi harness:
+taucode built four comparable arms in the same pi harness:
 
 - **A baseline**: no compaction.
 - **B / B' native LLM summary**: pi native summarization, with B' using a
@@ -72,7 +72,7 @@ compaction docs:
 - **Semantic anchor flag**: V3-WS can inject deterministic work-state anchors,
   intended as a cheaper substitute for D's persisted checkpoint.
 
-This places ecode between provider compaction and ordinary client summaries:
+This places taucode between provider compaction and ordinary client summaries:
 it is client-side like an agent framework, but it aims for provider-contract
 properties: byte stability, deterministic reconstruction, and measurable cache
 transition behavior.
@@ -134,11 +134,11 @@ faithful enough at this scale.
    D buys completion with cost. C'' is the actual next hypothesis.
 
 5. **Server-side compaction changes the comparison.** If DeepSeek or another
-   cache-observable backend exposes provider compaction, ecode should compare it
+   cache-observable backend exposes provider compaction, taucode should compare it
    as a new arm instead of assuming the client-side rule remains best.
 
 6. **Opaque compaction is hard to audit.** OpenAI/xAI-style compact items may be
-   operationally excellent but limit downstream evidence. ecode's artifact and
+   operationally excellent but limit downstream evidence. taucode's artifact and
    provenance discipline is strongest where the client can inspect what survived.
 
 7. **Cache trade-off is workload-shaped.** Anthropic's context editing docs
@@ -149,7 +149,7 @@ faithful enough at this scale.
 8. **The ~256K effective-window plateau is landscape support, pending
    verification.** Mainstream coding agents hold effective context near
    200K–272K despite larger advertised windows (context rot, compaction
-   headroom, cost). This validates the problem ecode addresses — context as a
+   headroom, cost). This validates the problem taucode addresses — context as a
    managed budget — and suggests a third term in the cost inequality: held raw
    bytes degrade reasoning quality even when they fit. Argument structure and
    evidence gates: `docs/note-256k-plateau-context-economy.md`. External
@@ -171,7 +171,7 @@ Decision changed by this: default `compact-after` for code-production workloads.
 
 ### 2. Test C'' On E1
 
-Run E1 with `ECODE_SEMANTIC_ANCHOR=1` and compare against R2 A/B'/C/D.
+Run E1 with `TAUCODE_SEMANTIC_ANCHOR=1` and compare against R2 A/B'/C/D.
 
 Question: can deterministic work anchors recover D-like completion without D's
 checkpoint cost?
@@ -196,13 +196,13 @@ Decision changed by this: dispatch policy for `direct-transform`.
 
 If a cache-observable provider exposes server-side compaction, add an E arm:
 
-- E = provider server-side compaction, no ecode projection.
-- E' = provider compaction + ecode provenance/telemetry only.
+- E = provider server-side compaction, no taucode projection.
+- E' = provider compaction + taucode provenance/telemetry only.
 
 Question: does provider compaction dominate client deterministic projection on
 cost, completion, and cache recovery?
 
-Decision changed by this: whether ecode remains a compaction mechanism or becomes
+Decision changed by this: whether taucode remains a compaction mechanism or becomes
 mainly an evaluation/provenance harness.
 
 ### 5. Make Audit Boring
@@ -248,7 +248,7 @@ Official/provider sources:
 - Factory context compression evaluation:
   https://docs.factory.ai/guides/power-user/evaluating-context-compression
 
-Local ecode sources:
+Local taucode sources:
 
 - R2 verdict: `docs/reports/r2-verdict.md`
 - R2 turn interaction retro: `docs/reports/r2-turn-interaction-retro-2026-07-06.md`
@@ -267,6 +267,6 @@ Local ecode sources:
 
 ## One Sentence
 
-Mainstream compaction is moving provider-side and summary-heavy; ecode's niche is
+Mainstream compaction is moving provider-side and summary-heavy; taucode's niche is
 the measurable client-side alternative for cache-observable systems: deterministic
 forgetting with provenance, artifacts, and task-type dispatch.

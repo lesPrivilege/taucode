@@ -18,7 +18,7 @@ let root: string;
 let snapshotRoot: string;
 
 beforeEach(() => {
-	root = mkdtempSync(join(tmpdir(), "ecode-ws-"));
+	root = mkdtempSync(join(tmpdir(), "taucode-ws-"));
 	// Build a synthetic snapshot: <root>/snap/{workspace, manifest.json}.
 	snapshotRoot = join(root, "snap");
 	const workspace = join(snapshotRoot, "workspace");

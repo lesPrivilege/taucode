@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# taucode — pi coding agent + deterministic-compaction extension, isolated profile.
+# Vanilla `pi` (~/.pi/) stays untouched; taucode uses its own agent dir so daily
+# dogfooding (treatment) and plain pi (control) can coexist.
+#
+# Identity note: interim project name was "ecode" (Euler's e, paired with pi).
+# Canonical name is taucode (τ = 2π). Legacy ECODE_* env vars and .ecode-agent
+# are still accepted via dual-read / dual-path below.
+set -euo pipefail
+
+TAUCODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CLI="$TAUCODE_ROOT/pi/packages/coding-agent/dist/cli.js"
+
+# Profile dir: prefer .taucode-agent; fall back to legacy .ecode-agent if present
+# and the new path does not exist yet (so existing dogfood sessions keep working).
+if [[ -d "$TAUCODE_ROOT/.taucode-agent" ]]; then
+  AGENT_DIR="$TAUCODE_ROOT/.taucode-agent"
+elif [[ -d "$TAUCODE_ROOT/.ecode-agent" ]]; then
+  AGENT_DIR="$TAUCODE_ROOT/.ecode-agent"
+else
+  AGENT_DIR="$TAUCODE_ROOT/.taucode-agent"
+fi
+
+if [[ ! -f "$CLI" ]]; then
+  echo "taucode: pi CLI not built. Run: (cd \"$TAUCODE_ROOT/pi\" && npm install && npm run build)" >&2
+  exit 1
+fi
+
+# Scaffold + self-heal: idempotent every launch. A guard on directory
+# existence cannot repair a dangling symlink (e.g. one created under a
+# different mount root) — Finding 1, launcher-test-2026-07-05. ln -sfn
+# is cheap and always converges on the correct native path.
+mkdir -p "$AGENT_DIR/extensions"
+ln -sfn "$TAUCODE_ROOT/extensions/deterministic-compaction" \
+  "$AGENT_DIR/extensions/deterministic-compaction"
+
+# Optional local profile for keys you don't want exported globally in .zshrc.
+# Never created, written, or read by anything else; lives under gitignored dir.
+# Format: plain `export FOO=bar` lines.  chmod 600 recommended.
+PROFILE="$AGENT_DIR/env"
+if [[ -f "$PROFILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$PROFILE"
+fi
+
+# Dual-read: TAUCODE_* primary, ECODE_* legacy fallback.
+env_get() {
+  local tau="$1"
+  local eco="ECODE_${1#TAUCODE_}"
+  if [[ -n "${!tau+x}" && -n "${!tau}" ]]; then
+    printf '%s' "${!tau}"
+  elif [[ -n "${!eco+x}" && -n "${!eco}" ]]; then
+    printf '%s' "${!eco}"
+  else
+    printf '%s' "${2:-}"
+  fi
+}
+
+# Recommended defaults (override per-invocation via real env).
+export PI_CODING_AGENT_DIR="$AGENT_DIR"
+export TAUCODE_COMPACT_AFTER_INPUT_TOKENS="$(env_get TAUCODE_COMPACT_AFTER_INPUT_TOKENS 32000)"
+export TAUCODE_KEEP_RECENT_ASSISTANT_MSGS="$(env_get TAUCODE_KEEP_RECENT_ASSISTANT_MSGS 3)"
+# Keep legacy names exported too so any still-unmigrated reader path works.
+export ECODE_COMPACT_AFTER_INPUT_TOKENS="$TAUCODE_COMPACT_AFTER_INPUT_TOKENS"
+export ECODE_KEEP_RECENT_ASSISTANT_MSGS="$TAUCODE_KEEP_RECENT_ASSISTANT_MSGS"
+
+# Provider routing: presence-detection only (names, never values, never files).
+# Skipped entirely if the user passed an explicit --model.
+have_model_flag=false
+for a in "$@"; do
+  [[ "$a" == "--model" || "$a" == --model=* ]] && have_model_flag=true && break
+done
+
+route_args=()
+if ! $have_model_flag; then
+  DEFAULT_MODEL="$(env_get TAUCODE_DEFAULT_MODEL "")"
+  if [[ -n "$DEFAULT_MODEL" ]]; then
+    route_args+=(--model "$DEFAULT_MODEL")
+  elif [[ -n "${DEEPSEEK_API_KEY:-}" ]]; then
+    route_args+=(--model "deepseek/deepseek-v4-flash")
+    echo "taucode: routing -> deepseek (DEEPSEEK_API_KEY present)" >&2
+  elif [[ -n "${MIMO_API_KEY:-}" && -n "${MIMO_BASE_URL:-}" ]]; then
+    export TAUCODE_OPENAI_COMPAT_BASE_URL="$MIMO_BASE_URL"
+    export ECODE_OPENAI_COMPAT_BASE_URL="$MIMO_BASE_URL"
+    echo "taucode: routing -> mimo (MIMO_API_KEY + MIMO_BASE_URL present)" >&2
+  else
+    echo "taucode: no provider key detected (checked: DEEPSEEK_API_KEY, MIMO_API_KEY+MIMO_BASE_URL)." >&2
+    echo "taucode: export one in your shell, or put it in $PROFILE (chmod 600), or pass --model." >&2
+  fi
+fi
+
+exec node "$CLI" ${route_args[@]+"${route_args[@]}"} "$@"

@@ -1,6 +1,6 @@
 /**
- * prepare-snapshot — build a reusable, frozen snapshot of `../taucode` for the
- * R/D-class G2 packets to run against.
+ * prepare-snapshot — build a reusable, frozen snapshot of the phase-1 standalone
+ * taucode tree (default: Archives) for the R/D-class G2 packets to run against.
  *
  * WHY this is a SEPARATE script (the human architectural call, see the G1d packet):
  *   Building a snapshot is expensive — copy the tree, strip `.git`/`results`/
@@ -22,7 +22,8 @@
  *
  * Invoke (run-once, standalone — NOT called by run.ts):
  *   node --import ./lib/register.mjs prepare-snapshot.ts --name r2 \
- *        [--source ../taucode] [--install-cmd "pnpm install"] [--no-install] [--force]
+ *        [--source ../../Archives/taucode-phase1-standalone-2026-05] \
+ *        [--install-cmd "pnpm install"] [--no-install] [--force]
  *
  * (register.mjs is unnecessary here — this script has no pi imports — but keeping a
  * single invocation convention avoids a footgun; plain `node prepare-snapshot.ts`
@@ -71,9 +72,12 @@ function parseArgs(argv: string[]): Args {
 	}
 	return {
 		name: flags.name.replace(/[^a-z0-9-]/gi, "-").toLowerCase(),
-		// Default source = taucode as a SIBLING of the ecode repo root ("../taucode"
-		// from REPO_ROOT). Relative --source values also resolve against REPO_ROOT.
-		source: typeof flags.source === "string" ? flags.source : "../taucode",
+		// Default source = archived phase-1 standalone agent (not this repo root).
+		// Relative --source values resolve against REPO_ROOT.
+		source:
+			typeof flags.source === "string"
+				? flags.source
+				: "../../Archives/taucode-phase1-standalone-2026-05",
 		installCmd: typeof flags["install-cmd"] === "string" ? flags["install-cmd"] : null,
 		install: flags["no-install"] !== true,
 		force: flags.force === true,

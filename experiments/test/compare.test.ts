@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 let dir: string;
 
 beforeEach(() => {
-	dir = mkdtempSync(join(tmpdir(), "ecode-compare-"));
+	dir = mkdtempSync(join(tmpdir(), "taucode-compare-"));
 });
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }));

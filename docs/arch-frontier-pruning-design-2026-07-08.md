@@ -183,10 +183,10 @@ interface ClearToolUsesOutcome {
 - `context` hook（缝 A）注册，行为 = adapter 转换 → `clearToolUses`
   → 逆转换；恒等时原引用透传；
 - flags（env，与 deterministic-compaction 同风格）：
-  `ECODE_TRC=1`（总开关，默认 OFF）、`ECODE_TRC_TRIGGER_TOKENS`、
-  `ECODE_TRC_KEEP`、`ECODE_TRC_CLEAR_AT_LEAST`、
-  `ECODE_TRC_EXCLUDE_TOOLS`（逗号分隔）、`ECODE_TRC_CLEAR_TOOL_INPUTS`、
-  `ECODE_TRC_PRESERVE_ERRORS`；
+  `TAUCODE_TRC=1`（总开关，默认 OFF）、`TAUCODE_TRC_TRIGGER_TOKENS`、
+  `TAUCODE_TRC_KEEP`、`TAUCODE_TRC_CLEAR_AT_LEAST`、
+  `TAUCODE_TRC_EXCLUDE_TOOLS`（逗号分隔）、`TAUCODE_TRC_CLEAR_TOOL_INPUTS`、
+  `TAUCODE_TRC_PRESERVE_ERRORS`；
 - 估计器注入：包外提供 chars/4 原始 transcript 度量（R3）；**不接**
   pi `estimateContextTokens`；度量域 = content + thinking + toolCalls
   序列化（G4b 验收澄清：thinking 是生成内容非 usage 场，纳入不违 R3；

@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 /**
- * Resolve the pi-mono workspace sources and the @ecode/compaction-core source
+ * Resolve the pi-mono workspace sources and the @taucode/compaction-core source
  * directly (mirrors pi's own coding-agent/vitest.config.ts alias strategy).
  *
  * The extension and its tests import the pi packages by their published names;
@@ -29,7 +29,7 @@ export default defineConfig({
 		// the test suite (the smoke test drives a real session with telemetry ON by
 		// default). Individual tests may still override via writeOptions.dir.
 		env: {
-			ECODE_AMBIENT_DIR: fileURLToPath(new URL("./.ambient-test-tmp", import.meta.url)),
+			TAUCODE_AMBIENT_DIR: fileURLToPath(new URL("./.ambient-test-tmp", import.meta.url)),
 		},
 		server: {
 			deps: {
@@ -39,7 +39,7 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: [
-			{ find: /^@ecode\/compaction-core$/, replacement: compactionCoreSrc },
+			{ find: /^@taucode\/compaction-core$/, replacement: compactionCoreSrc },
 			{ find: /^@earendil-works\/pi-ai$/, replacement: aiSrcIndex },
 			{ find: /^@earendil-works\/pi-ai\/compat$/, replacement: aiSrcCompat },
 			{ find: /^@earendil-works\/pi-ai\/oauth$/, replacement: aiSrcOAuth },

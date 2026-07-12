@@ -2,7 +2,7 @@
  * Adapter: pi `AgentMessage[]` <-> compaction-core `Message[]`.
  *
  * compaction-core operates on a flat, harness-agnostic message model
- * (see @ecode/compaction-core `types.ts`): assistant messages carry a
+ * (see @taucode/compaction-core `types.ts`): assistant messages carry a
  * `toolCalls[]` array, and tool results are their own `role: "tool"` messages
  * paired to a call by `toolCallId`. pi's `AgentMessage` union instead nests
  * `toolCall` blocks inside `assistant.content` and models tool results as a

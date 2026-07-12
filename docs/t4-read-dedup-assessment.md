@@ -63,7 +63,7 @@ free, and we can decide post-hoc whether to pass it through or replace it.
 
 ### Flag gating
 
-Gated behind `ECODE_TRUST_PROTOCOL` (same flag as all V2-TP work). The ledger is only
+Gated behind `TAUCODE_TRUST_PROTOCOL` (same flag as all V2-TP work). The ledger is only
 populated when the flag is on, so the dedup check naturally requires it.
 
 ### Interaction with stale-view hints

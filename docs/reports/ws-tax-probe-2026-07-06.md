@@ -2,8 +2,8 @@
 
 Scope: paired measurement run for in-band work-semantics declaration overhead.
 Scenario: `G2-E1`; arm: physical `C`; provider: real DeepSeek; compact-after:
-32000; keep-recent: 3. Both v2 runs enabled `ECODE_WS_DECLARATION=1`; the nudge
-run additionally enabled `ECODE_WS_DECLARE_NUDGE=every-turn`.
+32000; keep-recent: 3. Both v2 runs enabled `TAUCODE_WS_DECLARATION=1`; the nudge
+run additionally enabled `TAUCODE_WS_DECLARE_NUDGE=every-turn`.
 
 ## Harness Fix Before Measurement
 

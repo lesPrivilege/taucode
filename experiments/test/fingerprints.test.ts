@@ -23,7 +23,7 @@ const RESULTS = fileURLToPath(new URL("../results/", import.meta.url));
 
 let dir: string;
 beforeAll(() => {
-	dir = mkdtempSync(join(tmpdir(), "ecode-fingerprints-"));
+	dir = mkdtempSync(join(tmpdir(), "taucode-fingerprints-"));
 });
 afterAll(() => {
 	rmSync(dir, { recursive: true, force: true });

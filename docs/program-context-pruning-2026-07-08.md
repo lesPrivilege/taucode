@@ -6,7 +6,7 @@
 
 ## 0. 收束命题
 
-ecode 收束为**对 context 剪裁的系统研究与实验**：把先进 harness 侧
+taucode 收束为**对 context 剪裁的系统研究与实验**：把先进 harness 侧
 乃至 provider 侧的剪裁机制，复刻为可运行在薄 harness（pi）与任意
 OpenAI-compatible provider 上的 extensions，在同一台架上以三列账本
 ——**cache 价格 × 可复现性 × 失效指纹**——统一测量。
@@ -81,7 +81,7 @@ reasoning，则 DeepSeek 上该机制**已被 provider 内置**，复刻靶标
 
 1. **比较研究**：paper v2 增比较章——同台、同任务、同账本下的机制
    横评（自研 × frontier 复刻），每格三列标价；负结果照发；
-2. **插件套件**：`@ecode/context-pruning` 逐批扩容 + 对应 extensions
+2. **插件套件**：`@taucode/context-pruning` 逐批扩容 + 对应 extensions
    ——「boring to install, easy to disable」（roadmap 产品形态原句）；
 3. **上游贡献**：不可复刻格转化为 upstream issue（subagent 面、
    cache 诊断）与 provider ask（server-side 能力、cache 字段），

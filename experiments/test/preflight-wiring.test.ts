@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 let dir: string;
 
 beforeEach(() => {
-	dir = mkdtempSync(join(tmpdir(), "ecode-preflight-"));
+	dir = mkdtempSync(join(tmpdir(), "taucode-preflight-"));
 });
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
@@ -21,7 +21,7 @@ function rows(path: string): Record<string, unknown>[] {
 }
 
 describe("R2-preflight harness wiring", () => {
-	it("injects file-exists acceptance targets into ECODE_ANCHOR_ACCEPTANCE when the anchor flag is on", () => {
+	it("injects file-exists acceptance targets into TAUCODE_ANCHOR_ACCEPTANCE when the anchor flag is on", () => {
 		const out = join(dir, "e1-c.jsonl");
 		execFileSync(
 			process.execPath,
@@ -42,7 +42,7 @@ describe("R2-preflight harness wiring", () => {
 				"--out",
 				out,
 			],
-			{ cwd: resolve("."), encoding: "utf8", env: { ...process.env, ECODE_SEMANTIC_ANCHOR: "1" } },
+			{ cwd: resolve("."), encoding: "utf8", env: { ...process.env, TAUCODE_SEMANTIC_ANCHOR: "1" } },
 		);
 
 		const meta = rows(out).find((r) => r.type === "meta")!;

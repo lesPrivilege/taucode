@@ -2,9 +2,9 @@
 
 ## Scope
 
-Goal: run one real `./bin/ecode` TUI session through the deterministic compaction lifecycle and capture five narrative screenshots: S-A waiting gate, S-B threshold trigger, S-C CH dip, S-D CH recovery, and S-E `/compact-dash`.
+Goal: run one real `./bin/taucode` TUI session through the deterministic compaction lifecycle and capture five narrative screenshots: S-A waiting gate, S-B threshold trigger, S-C CH dip, S-D CH recovery, and S-E `/compact-dash`.
 
-Session command: `./bin/ecode`
+Session command: `./bin/taucode`
 
 Resume id printed on exit: `019f32d6-309d-7472-b9cc-0e586caed0c8`
 
@@ -32,7 +32,7 @@ No API key value was printed or recorded.
 
 ### S-A gate waiting
 
-![S-A gate waiting](/private/tmp/ecode-tui-acceptance-2026-07-05/S-A-gate-waiting.png)
+![S-A gate waiting](/private/tmp/taucode-tui-acceptance-2026-07-05/S-A-gate-waiting.png)
 
 This is the successful early-session baseline: `/compact-status` reports `Trigger: waiting`, zero replacements, and `Gate: 32,000 tokens UNDER threshold (0 < 32,000, compactable-content estimate) -> waiting`.
 
@@ -40,7 +40,7 @@ The gate number is the compactable-content estimate, not the footer percentage. 
 
 ### S-B threshold trigger
 
-![S-B threshold not reached](/private/tmp/ecode-tui-acceptance-2026-07-05/S-B-threshold-not-reached.png)
+![S-B threshold not reached](/private/tmp/taucode-tui-acceptance-2026-07-05/S-B-threshold-not-reached.png)
 
 Attempted to drive a natural threshold crossing with read-only analysis of `../taucode/packages/core/src/compaction.ts`, `loop.ts`, `context.ts`, `compaction-report.ts`, and `session.ts`. The provider call failed with repeated `Connection error` messages and then `Retry failed after 3 attempts`.
 
@@ -48,7 +48,7 @@ No trigger marker line appeared. No turn number, replacements count, or saved-to
 
 ### S-C CH dip
 
-![S-C CH dip not observed](/private/tmp/ecode-tui-acceptance-2026-07-05/S-C-ch-dip-not-observed.png)
+![S-C CH dip not observed](/private/tmp/taucode-tui-acceptance-2026-07-05/S-C-ch-dip-not-observed.png)
 
 A smaller probe turn, `ping: please answer ok`, also failed after retries with `Connection error`. The status strip reached `gate 492 / 32,000 compactable · waiting · keep=3`, but `CH` stayed empty.
 
@@ -56,7 +56,7 @@ CH samples require completed assistant response usage. Because no successful ass
 
 ### S-D CH recovery
 
-![S-D CH recovery not observed](/private/tmp/ecode-tui-acceptance-2026-07-05/S-D-ch-recovery-not-observed.png)
+![S-D CH recovery not observed](/private/tmp/taucode-tui-acceptance-2026-07-05/S-D-ch-recovery-not-observed.png)
 
 S-D requires a prior trigger plus two to three later turns to show recovery. In this session there was no trigger and no usable CH sample stream.
 
@@ -64,7 +64,7 @@ Recovery is therefore a FAIL item rather than a weak pass. No numeric CH trend i
 
 ### S-E /compact-dash
 
-![S-E compact dash](/private/tmp/ecode-tui-acceptance-2026-07-05/S-E-compact-dash.png)
+![S-E compact dash](/private/tmp/taucode-tui-acceptance-2026-07-05/S-E-compact-dash.png)
 
 `/compact-dash` returned `Gate: 492 / 32,000 compactable · waiting · keep=3`, `Triggers: none yet`, and `CH: no data`.
 

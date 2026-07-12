@@ -84,7 +84,7 @@ function unitSteps(): ScriptedStep[] {
 }
 
 async function buildHarness(compactAfterInputTokens: number): Promise<Harness> {
-	const tempDir = join(tmpdir(), `pi-ecode-tune-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+	const tempDir = join(tmpdir(), `pi-taucode-tune-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	mkdirSync(tempDir, { recursive: true });
 	const agentDir = join(tempDir, "agent");
 	mkdirSync(agentDir, { recursive: true });

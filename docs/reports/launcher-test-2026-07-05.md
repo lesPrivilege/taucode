@@ -10,7 +10,7 @@ sandboxed). No provider keys in shell env at test time.
 
 ## Pre-flight
 
-- `bin/ecode` was already clean in git — the routing-logic commit a prior
+- `bin/taucode` was already clean in git — the routing-logic commit a prior
   sandboxed session couldn't land (permission-restricted there) had already
   been committed here as `9f6a1d4`. Nothing pending.
 - `pi/packages/coding-agent/dist/cli.js` present pre-test. **[dispatcher-verified:**
@@ -20,14 +20,14 @@ sandboxed). No provider keys in shell env at test time.
 
 | # | Result | Real output excerpt |
 | --- | --- | --- |
-| T1 | **PASS** | `dist/cli.js` moved aside → `ecode: pi CLI not built. Run: (...)` on stderr, exit 1, no crash. Restored after. **[dispatcher-verified: cli.js back at 681 bytes / original mtime — the move-and-restore left no residue.]** |
-| T2 | **PASS** | Fresh scaffold created `.ecode-agent/extensions/deterministic-compaction` → correct realpath. pi started, `0.80.3`, exit 0. |
+| T1 | **PASS** | `dist/cli.js` moved aside → `taucode: pi CLI not built. Run: (...)` on stderr, exit 1, no crash. Restored after. **[dispatcher-verified: cli.js back at 681 bytes / original mtime — the move-and-restore left no residue.]** |
+| T2 | **PASS** | Fresh scaffold created `.taucode-agent/extensions/deterministic-compaction` → correct realpath. pi started, `0.80.3`, exit 0. |
 | T3 | **PASS** | Two stderr lines (checked-vars + profile path) printed; pi then hit its own undefined no-key/no-model behavior (defaults to `google`, `No API key found`) — known boundary, recorded not failed. |
 | T4 | **PASS** | `DEEPSEEK_API_KEY=x` → `routing -> deepseek`, then real DeepSeek 401: `{"message":"Authentication Fails, Your api key: x is invalid",...}` — proves the route and model reached DeepSeek's real endpoint. |
 | T5 | **PASS** | `--model anthropic/claude-sonnet-4` → zero routing/no-key lines, confirmed with and without a fake key present, and for the `--model=foo` equals-form. |
-| T6 | **PASS** | `ECODE_DEFAULT_MODEL=deepseek/deepseek-v4-pro` + fake key present → 0 routing lines, prompt hit DeepSeek with the **pro** model (401) — value flows through as `--model`, correctly takes priority over key-detection. |
-| T7 | **PASS** | `export DEEPSEEK_API_KEY=x` written to `.ecode-agent/env`, shell key unset → still routed + hit DeepSeek (file was sourced). `.ecode-agent/env` confirmed `git check-ignore`'d. |
-| T8 | **PASS** | Ambient JSONL count in `experiments/results/ambient/` went 5→6 on a fresh `ecode -p` run; newest file a valid `g1c-ambient` session record. **[dispatcher-verified: directory holds 7 files post-test, consistent with continued accumulation; command names cross-checked directly in source — see Finding 1 below.]** |
+| T6 | **PASS** | `TAUCODE_DEFAULT_MODEL=deepseek/deepseek-v4-pro` + fake key present → 0 routing lines, prompt hit DeepSeek with the **pro** model (401) — value flows through as `--model`, correctly takes priority over key-detection. |
+| T7 | **PASS** | `export DEEPSEEK_API_KEY=x` written to `.taucode-agent/env`, shell key unset → still routed + hit DeepSeek (file was sourced). `.taucode-agent/env` confirmed `git check-ignore`'d. |
+| T8 | **PASS** | Ambient JSONL count in `experiments/results/ambient/` went 5→6 on a fresh `taucode -p` run; newest file a valid `g1c-ambient` session record. **[dispatcher-verified: directory holds 7 files post-test, consistent with continued accumulation; command names cross-checked directly in source — see Finding 1 below.]** |
 | T9 | **SKIP** | No real `DEEPSEEK_API_KEY` or `MIMO_API_KEY`+`MIMO_BASE_URL` present (presence-checked only, values never read). Correctly not fabricated. |
 | T10 | **PASS** | `~/.pi/` — full recursive `stat` listing (mtime+size+path), 557 entries, identical sha256 before/after all runs. Only read-only `stat` touched `~/.pi/`. |
 
@@ -37,7 +37,7 @@ sandboxed). No provider keys in shell env at test time.
 
 `getModels("deepseek")` was checked live (`--list-models deepseek`): returns
 `deepseek-v4-flash` and `deepseek-v4-pro`, both 1M context. The hardcoded
-default in `bin/ecode` (`deepseek/deepseek-v4-flash`) **matches** — no script
+default in `bin/taucode` (`deepseek/deepseek-v4-flash`) **matches** — no script
 edit needed. (This also cross-confirms the 1.0M context-window figure seen
 earlier in the interactive footer test.)
 
@@ -54,23 +54,23 @@ earlier in the interactive footer test.)
 
 ## Findings worth archiving
 
-**Finding 1 — the pre-existing `.ecode-agent/` had a dangling extension symlink, meaning the earlier live interactive test almost certainly ran without the extension loaded.**
-Before this test run, `.ecode-agent/extensions/deterministic-compaction`
-pointed at `/sessions/sleepy-clever-hawking/mnt/ecode/extensions/deterministic-compaction`
+**Finding 1 — the pre-existing `.taucode-agent/` had a dangling extension symlink, meaning the earlier live interactive test almost certainly ran without the extension loaded.**
+Before this test run, `.taucode-agent/extensions/deterministic-compaction`
+pointed at `/sessions/sleepy-clever-hawking/mnt/taucode/extensions/deterministic-compaction`
 (a sandbox-internal path that does not exist on this native Mac) — confirmed
 dangling by the dispatcher directly before this test dispatch. T2's fresh
 scaffold (triggered because the *directory* didn't exist, not because the
 *symlink* was broken) created a correct symlink pointing at the real native
 path. **Consequence: the earlier interactive smoke test (the "read GOALS.md"
 summary + the `CH95.4%` cache-hit footer reading) almost certainly ran with
-pi's DeepSeek connection working but the ecode extension NOT loaded** — that
+pi's DeepSeek connection working but the taucode extension NOT loaded** — that
 data is real and valid for DeepSeek's own native prompt caching, but it does
 not demonstrate the deterministic-compaction extension itself was active.
 T8 (ambient telemetry counter incrementing, verified against a symlink now
 confirmed correct) is the first real proof the extension loads on this
 machine. Also: the scaffold guard is `[[ ! -d "$AGENT_DIR/extensions" ]]` —
 it will not self-heal a broken symlink if the directory already exists, only
-a full absence re-triggers it. Anyone reusing a `.ecode-agent/` carried over
+a full absence re-triggers it. Anyone reusing a `.taucode-agent/` carried over
 from a sandboxed session should re-scaffold rather than assume it's fine.
 
 **Finding 2 — checklist wording bug, fixed forward (see above).** `/compaction`
@@ -89,11 +89,11 @@ harness neither of which exists yet.
 
 | Phenomenon | Why not fix-forward | Suggested options |
 | --- | --- | --- |
-| Ambient JSONL accumulates one file per `ecode` invocation, unbounded (7 files after this test session alone) | Retention/rotation policy is a design decision, not a bug | (a) cap by count/age, (b) roll into dated per-day files, (c) leave as-is for now and revisit after a week of real DF0 volume data |
-| `ecode --help` / `--version` still print the "no provider key detected" stderr nag, since routing-skip only checks for `--model` | Touches routing-strategy logic (which flags should suppress the routing branch) — borderline, protocol says default to log-only when unsure | (a) extend the skip condition to informational flags, (b) leave as a cosmetic non-issue |
-| No-op `ecode -p "OK"` wall time ~1.5s (0.78s user) | Pure performance number — protocol: record raw, don't judge | Only worth acting on if it becomes a friction point during actual DF0 daily use |
-| Unexplained `bin/` subdirectory inside `.ecode-agent/` (present in the original scaffold, origin unclear, harmless) | Cause unknown; not worth guessing at a fix | Note only; investigate if it recurs or grows |
-| T3's undefined pi no-key/no-model behavior (falls back to `google`, then fails on missing credentials for that provider) | Explicitly a named known-boundary, not ecode's contract to define | None needed — already the checklist's own stated boundary |
+| Ambient JSONL accumulates one file per `taucode` invocation, unbounded (7 files after this test session alone) | Retention/rotation policy is a design decision, not a bug | (a) cap by count/age, (b) roll into dated per-day files, (c) leave as-is for now and revisit after a week of real DF0 volume data |
+| `taucode --help` / `--version` still print the "no provider key detected" stderr nag, since routing-skip only checks for `--model` | Touches routing-strategy logic (which flags should suppress the routing branch) — borderline, protocol says default to log-only when unsure | (a) extend the skip condition to informational flags, (b) leave as a cosmetic non-issue |
+| No-op `taucode -p "OK"` wall time ~1.5s (0.78s user) | Pure performance number — protocol: record raw, don't judge | Only worth acting on if it becomes a friction point during actual DF0 daily use |
+| Unexplained `bin/` subdirectory inside `.taucode-agent/` (present in the original scaffold, origin unclear, harmless) | Cause unknown; not worth guessing at a fix | Note only; investigate if it recurs or grows |
+| T3's undefined pi no-key/no-model behavior (falls back to `google`, then fails on missing credentials for that provider) | Explicitly a named known-boundary, not taucode's contract to define | None needed — already the checklist's own stated boundary |
 
 ## Handoff
 
@@ -114,8 +114,8 @@ harness neither of which exists yet.
 2. `--help`/`--version` 触发路由 stderr → **裁 (a)**：informational flags
    加入 skip 条件。裁决已下，降级为 fix-forward，下轮顺手改。
 3. 启动 ~1.5s → **只记录**。DF0 期间成为体感摩擦再议。
-4. `.ecode-agent/bin/` 来源不明 → **只记录**，复现或增长再查。
-5. T3 pi 无 key 回落 google → **不做**，上游行为，非 ecode 契约。
+4. `.taucode-agent/bin/` 来源不明 → **只记录**，复现或增长再查。
+5. T3 pi 无 key 回落 google → **不做**，上游行为，非 taucode 契约。
 
 **Finding 归档**：
 

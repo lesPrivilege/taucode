@@ -5,13 +5,13 @@
 ## 路径 A · 解耦插件（地板,随时可发）
 
 compaction-core 零依赖纯函数包 + adapter 集（pi extension 为第一个）。
-G1a 架构的既有属性,无需新决策。发布物:`@ecode/compaction-core` +
+G1a 架构的既有属性,无需新决策。发布物:`@taucode/compaction-core` +
 `extensions/deterministic-compaction`（含 trust-protocol flag）。
 
 ## 路径 B · 「DeepSeek-first coding agent」（宣言,等数据）
 
 定位与论文自洽:cache 契约绑定单一 backend 才跨层成立（multi-provider 是
-论文反例）——ecode 即论点的演示物。但**成本承诺现在担不起**:
+论文反例）——taucode 即论点的演示物。但**成本承诺现在担不起**:
 
 - 已知账:window 填满大大延后、单请求变小,但 CH 可见下降;
 - DeepSeek 经济学恰以 hit 折扣 + 廉价 context 为卖点——净省在双模态

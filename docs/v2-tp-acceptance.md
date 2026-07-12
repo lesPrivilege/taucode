@@ -6,7 +6,7 @@
 
 | Task | Commit(s) | Status |
 | --- | --- | --- |
-| Flag scaffold (`ECODE_TRUST_PROTOCOL`, default OFF) | `0421625` | DONE |
+| Flag scaffold (`TAUCODE_TRUST_PROTOCOL`, default OFF) | `0421625` | DONE |
 | T1: View ledger (path→{hash, turn}, SHA-256/8-hex) | `de30799` | DONE |
 | T2: summaryMeta injection seam (hash+diffstat) | `77357de` | DONE |
 | T3: Stale-view hint scanner (pure, read-only) | `735da16` | DONE |
@@ -20,7 +20,7 @@
 
 ### flag-off: byte-identical to v1 (全部现有测试字节级同行为)
 
-**PASS** — 73/73 tests green with `ECODE_TRUST_PROTOCOL` unset (default OFF).
+**PASS** — 73/73 tests green with `TAUCODE_TRUST_PROTOCOL` unset (default OFF).
 
 Evidence:
 - `trust-protocol.test.ts`: asserts `resolveConfig().trustProtocolEnabled === false` when env unset

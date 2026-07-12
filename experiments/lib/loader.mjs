@@ -35,7 +35,7 @@ const CORE = `${repoRoot}packages/compaction-core/src/index.ts`;
 
 /** specifier -> absolute source file. Mirrors vitest.config.ts alias array. */
 const ALIASES = new Map([
-	["@ecode/compaction-core", CORE],
+	["@taucode/compaction-core", CORE],
 	["@earendil-works/pi-ai", `${PI}/ai/src/index.ts`],
 	["@earendil-works/pi-ai/compat", `${PI}/ai/src/compat.ts`],
 	["@earendil-works/pi-ai/oauth", `${PI}/ai/src/oauth.ts`],

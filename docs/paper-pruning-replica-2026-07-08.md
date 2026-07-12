@@ -117,7 +117,7 @@ verification must cover both.
 
 ### 3.1 Implementation facts
 
-- `@ecode/context-pruning`: pure-function package, zero harness/provider
+- `@taucode/context-pruning`: pure-function package, zero harness/provider
   dependencies, 23 golden-fixture tests. All three identity paths (below
   trigger / empty clearable set / clearAtLeast unmet) return **the original
   array reference** — the prefix-cache contract holds by construction;

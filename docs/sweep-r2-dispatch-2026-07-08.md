@@ -15,13 +15,13 @@
 ## 给 Codex 的 prompt（整段复制）
 
 ```
-You are executing SWEEP-R2 for /Users/lesprivilege/Projects/ecode — six real
+You are executing SWEEP-R2 for /Users/lesprivilege/Projects/taucode — six real
 DeepSeek API runs sweeping the deterministic-compaction threshold. You run
 commands in the terminal and record results; you do NOT interpret findings.
 
 ## Preflight (all must pass before any paid run)
 
-1. cd /Users/lesprivilege/Projects/ecode/experiments
+1. cd /Users/lesprivilege/Projects/taucode/experiments
 2. Confirm env: `test -n "$DEEPSEEK_API_KEY" && echo ok` — if missing, STOP
    and ask the operator.
 3. `npm test` → expect all green (72+ tests). `npm run typecheck` → clean.

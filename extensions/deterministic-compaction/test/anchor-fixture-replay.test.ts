@@ -5,7 +5,7 @@
  * tests, context grows until a projection fires and compacts the raw file contents
  * away, and the required artifact (SUBSYSTEM-MAP.md) is never produced. WITHOUT the
  * anchor the projected context has lost the work semantics — the model can no
- * longer see what it did or what it still owes. WITH ECODE_SEMANTIC_ANCHOR the
+ * longer see what it did or what it still owes. WITH TAUCODE_SEMANTIC_ANCHOR the
  * projected model input carries a deterministic [work-anchor] block re-stating the
  * mechanically verifiable facts, including the pending acceptance target.
  *

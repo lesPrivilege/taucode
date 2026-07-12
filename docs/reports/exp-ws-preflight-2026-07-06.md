@@ -26,7 +26,7 @@ Output directory: `experiments/results/exp-ws-preflight/`.
 
 ## Implementation Notes
 
-- `C+PL` now opens a real default-off placebo tail (`ECODE_WS_PLACEBO`) instead
+- `C+PL` now opens a real default-off placebo tail (`TAUCODE_WS_PLACEBO`) instead
   of only recording a manifest flag.
 - The tail is fixed generic reminder text and carries no work semantics.
 - Token targeting is local-estimate only and is not provider cost accounting.

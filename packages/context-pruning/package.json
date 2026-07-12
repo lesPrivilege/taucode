@@ -1,5 +1,5 @@
 {
-  "name": "@ecode/context-pruning",
+  "name": "@taucode/context-pruning",
   "version": "0.1.0",
   "description": "Deterministic client-side replica of Anthropic's clear_tool_uses_20250919 context editing: pure tool-result pruning with injectable token estimator. Harness-agnostic.",
   "keywords": [

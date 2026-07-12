@@ -18,7 +18,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, ToolResultMessage, UserMessage } from "@earendil-works/pi-ai";
-import { projectCompaction } from "@ecode/compaction-core";
+import { projectCompaction } from "@taucode/compaction-core";
 import { toCore } from "../src/adapter.js";
 import { estimateAgentTokens } from "../src/projection.js";
 

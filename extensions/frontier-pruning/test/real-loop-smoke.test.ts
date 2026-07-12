@@ -53,7 +53,7 @@ interface RealLoopHarness {
 }
 
 async function buildHarness(env: EnvLike, steps: ScriptedStep[]): Promise<RealLoopHarness> {
-  const tempDir = join(tmpdir(), `ecode-trc-smoke-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const tempDir = join(tmpdir(), `taucode-trc-smoke-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const agentDir = join(tempDir, "agent");
   mkdirSync(agentDir, { recursive: true });
 
@@ -175,7 +175,7 @@ describe("real agent-loop smoke (G4b-R)", () => {
 
   it("above threshold: send payload carries the placeholder, keep window survives, disk JSONL stays raw with zero placeholder occurrences", async () => {
     harness = await buildHarness(
-      { ECODE_TRC: "1", ECODE_TRC_TRIGGER_TOKENS: "1", ECODE_TRC_KEEP: "2" },
+      { TAUCODE_TRC: "1", TAUCODE_TRC_TRIGGER_TOKENS: "1", TAUCODE_TRC_KEEP: "2" },
       readSteps(FILE_COUNT),
     );
     const { session, sessionManager, providerContexts } = harness;
@@ -237,7 +237,7 @@ describe("real agent-loop smoke (G4b-R)", () => {
     // meaningful at the real-loop boundary is byte-level content identity,
     // asserted below.
     harness = await buildHarness(
-      { ECODE_TRC: "1", ECODE_TRC_TRIGGER_TOKENS: "10000000", ECODE_TRC_KEEP: "2" },
+      { TAUCODE_TRC: "1", TAUCODE_TRC_TRIGGER_TOKENS: "10000000", TAUCODE_TRC_KEEP: "2" },
       readSteps(FILE_COUNT),
     );
     const { session, providerContexts } = harness;
@@ -253,10 +253,10 @@ describe("real agent-loop smoke (G4b-R)", () => {
     expect(serialized).not.toContain(CLEAR_TOOL_USES_PLACEHOLDER);
   }, 60000);
 
-  it("ECODE_TRC_PRESERVE_ERRORS=1: an isError result pair survives whole in the send payload even after it ages past the keep window", async () => {
+  it("TAUCODE_TRC_PRESERVE_ERRORS=1: an isError result pair survives whole in the send payload even after it ages past the keep window", async () => {
     const READ_COUNT = 5; // + 1 error-first pair = 6 pairs total; keep=2 -> 4 candidates, including the error pair
     harness = await buildHarness(
-      { ECODE_TRC: "1", ECODE_TRC_TRIGGER_TOKENS: "1", ECODE_TRC_KEEP: "2", ECODE_TRC_PRESERVE_ERRORS: "1" },
+      { TAUCODE_TRC: "1", TAUCODE_TRC_TRIGGER_TOKENS: "1", TAUCODE_TRC_KEEP: "2", TAUCODE_TRC_PRESERVE_ERRORS: "1" },
       errorFirstThenReadSteps(READ_COUNT),
     );
     const { session, providerContexts } = harness;

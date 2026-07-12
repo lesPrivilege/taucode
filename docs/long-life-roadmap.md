@@ -2,19 +2,19 @@
 
 2026-07-06. This roadmap starts after R2: the project has real DeepSeek data,
 artifact retention, deterministic compaction, trust hints, semantic anchors behind
-flags, and a first dispatch policy. The goal now is to keep ecode useful after the
+flags, and a first dispatch policy. The goal now is to keep taucode useful after the
 current model quirks and job-application window have aged out.
 
 ## North Star
 
-> Converged 2026-07-08 (see `program-context-pruning-2026-07-08.md`): ecode is
+> Converged 2026-07-08 (see `program-context-pruning-2026-07-08.md`): taucode is
 > a systematic study of context pruning. Advanced harness-side and even
 > provider-side pruning mechanisms are replicated as thin-harness extensions
 > and measured on one common ledger — cache price, reproducibility class,
 > failure fingerprint. The earlier phrasing below still holds; the program
 > charter is its sharpened form.
 
-ecode should become a small, durable harness for measuring where context should
+taucode should become a small, durable harness for measuring where context should
 be handled by rules, by models, or by provider infrastructure.
 
 The durable asset is not one compaction trick. It is the combination of:
@@ -33,7 +33,7 @@ reviewable artifacts, and falsifiable reports. Do not turn it into a general
 agent framework.
 
 **Plugin second.** Publish the reusable pieces only after the local rig can
-explain them: `@ecode/compaction-core`, the pi extension, and a minimal launcher
+explain them: `@taucode/compaction-core`, the pi extension, and a minimal launcher
 profile. The plugin should be boring to install and easy to disable.
 
 **Narrative third.** The public story should lead with context quality and
@@ -47,7 +47,7 @@ support them.
 - Land the current evidence bundle: `r2-verdict`, evidence index, README, and
   release-path note agree on the same state.
 - Run the approved sweep: R1-C at 4k/16k/64k and D1-C at 4k.
-- Run E1 x C'' with `ECODE_SEMANTIC_ANCHOR=1`.
+- Run E1 x C'' with `TAUCODE_SEMANTIC_ANCHOR=1`.
 - Update `note-release-paths.md` from seed to final release decision.
 - Open upstream issue candidates only after the evidence pages are stable:
   settings persistence, cache diagnostics, and extension capability gaps.
@@ -140,7 +140,7 @@ support them.
 7. ~~`WS-3`~~: done 2026-07-06; sideband summary records.
 8. ~~`WS-4`~~ + ~~`EXP-WS`~~: done 2026-07-06; default-off projection policy
    and addon experiment arms wired.
-9. ~~`WS-5`~~: done 2026-07-06; write-only `.ecode/ledger/` sink.
+9. ~~`WS-5`~~: done 2026-07-06; write-only `.taucode/ledger/` sink.
 
 ### 待验（有明确触发/门禁）
 
@@ -152,7 +152,7 @@ support them.
     门禁：现有探针强度下负区未复现，需更强刺激。
 13. C''' 校准研究：模型自知程度测量（论文轴，非产品轴）。
     门禁：in-band 声明税数据（R8）已就位，待设计实验。
-14. WS-6 续行注入：从 `.ecode/ledger/` 恢复上下文。
+14. WS-6 续行注入：从 `.taucode/ledger/` 恢复上下文。
     门禁：WS-5 dogfooding 证据 + 持久层 retention 规则。
 15. provider compaction E 臂：对比 server-side compaction。
     触发器：cache-observable backend 暴露 compaction API（R6）。

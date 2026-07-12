@@ -172,18 +172,19 @@ export interface AppendAmbientRowOptions {
 
 /**
  * Resolve the default ambient output directory: `experiments/results/ambient`
- * under the ecode repo root. This module lives at
+ * under the taucode repo root. This module lives at
  * `extensions/deterministic-compaction/src/ambient-telemetry.ts`, so the repo
  * root is three levels up from `src`. Kept as a function (not a const) so tests
  * can assert the path without importing node internals at module scope.
  *
- * `ECODE_AMBIENT_DIR` overrides the target when set — used by the test suite to
+ * `TAUCODE_AMBIENT_DIR` overrides the target when set — used by the test suite to
  * redirect ambient writes to a throwaway dir so real dogfood data in
  * `experiments/results/ambient/` is never touched by tests. Real runs leave it
- * unset and get the true default.
+ * unset and get the true default. Legacy `ECODE_AMBIENT_DIR` is accepted when
+ * the TAUCODE_ key is unset (see docs/env-var-compat.md).
  */
 export function defaultAmbientDir(): string {
-	const override = process.env.ECODE_AMBIENT_DIR;
+	const override = process.env.TAUCODE_AMBIENT_DIR ?? process.env.ECODE_AMBIENT_DIR;
 	if (override && override.trim() !== "") return override;
 	// .../extensions/deterministic-compaction/src -> repo root is ../../../
 	const here = dirname(fileURLToPathSafe(import.meta.url));

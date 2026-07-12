@@ -5,7 +5,7 @@
  * compaction is applied to the outgoing send payload. Below the token threshold
  * messages pass through unchanged (prefix-cache preservation); at/above it,
  * large write/edit tool-call arguments and read/bash/search/find results are
- * replaced with compact summaries via @ecode/compaction-core. The hook return
+ * replaced with compact summaries via @taucode/compaction-core. The hook return
  * is a send-time projection only and never persisted (docs/g0-survey.md Item 3).
  *
  * Seam B (`session_before_compact`): OPTIONAL and OFF by default. When enabled,
@@ -15,9 +15,9 @@
  * pass, so the summary is written to be fully self-contained.
  *
  * Configuration (env vars so it works identically under the CLI and in tests):
- *   ECODE_COMPACT_AFTER_INPUT_TOKENS   number, default 32000 — seam A gate
- *   ECODE_KEEP_RECENT_ASSISTANT_MSGS   number, default 3     — protection window
- *   ECODE_SEAM_B                        "1"/"true" to enable seam B (default off)
+ *   TAUCODE_COMPACT_AFTER_INPUT_TOKENS   number, default 32000 — seam A gate
+ *   TAUCODE_KEEP_RECENT_ASSISTANT_MSGS   number, default 3     — protection window
+ *   TAUCODE_SEAM_B                        "1"/"true" to enable seam B (default off)
  *
  * Loading an extension that lives OUTSIDE the pi-mono tree:
  *   pi --extension /abs/path/to/extensions/deterministic-compaction/src/extension.ts
@@ -110,21 +110,34 @@ const DEFAULT_SIDEBAND_MIN_TOKENS = 2000;
 const DEFAULT_SIDEBAND_MODEL = "sideband-summary";
 const DEFAULT_WS_VERBATIM_WINDOW = 8;
 
+/**
+ * Dual-read env: TAUCODE_* is canonical; ECODE_* is accepted as a legacy alias
+ * when the TAUCODE_ key is unset. See docs/env-var-compat.md.
+ */
+function envGet(name: string): string | undefined {
+	const primary = process.env[name];
+	if (primary !== undefined) return primary;
+	if (name.startsWith("TAUCODE_")) {
+		return process.env[`ECODE_${name.slice("TAUCODE_".length)}`];
+	}
+	return undefined;
+}
+
 function readNumberEnv(name: string, fallback: number): number {
-	const raw = process.env[name];
+	const raw = envGet(name);
 	if (raw === undefined || raw.trim() === "") return fallback;
 	const n = Number(raw);
 	return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
 function readBoolEnv(name: string): boolean {
-	const raw = (process.env[name] ?? "").trim().toLowerCase();
+	const raw = (envGet(name) ?? "").trim().toLowerCase();
 	return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
 }
 
 /** Parse a comma/newline-separated env list into trimmed, non-empty items (undefined when unset/empty). */
 function readListEnv(name: string): string[] | undefined {
-	const raw = process.env[name];
+	const raw = envGet(name);
 	if (raw === undefined) return undefined;
 	const items = raw
 		.split(/[,\n]/)
@@ -136,33 +149,33 @@ function readListEnv(name: string): string[] | undefined {
 export interface DeterministicCompactionConfig extends ProjectionConfig {
 	seamBEnabled: boolean;
 	/**
-	 * V2-TP master flag (env ECODE_TRUST_PROTOCOL). Default OFF. Gates ALL
+	 * V2-TP master flag (env TAUCODE_TRUST_PROTOCOL). Default OFF. Gates ALL
 	 * trust-protocol behaviour so flag-off stays byte-identical to v1 (the G2
 	 * round-1 C arm must not be polluted). Packet 禁区: default must not be on.
 	 */
 	trustProtocolEnabled?: boolean;
 	/**
-	 * V3-WS master flag (env ECODE_SEMANTIC_ANCHOR). Default OFF. Gates the
+	 * V3-WS master flag (env TAUCODE_SEMANTIC_ANCHOR). Default OFF. Gates the
 	 * work-semantic anchor block entirely, so flag-off stays byte-identical to v1.
 	 * This is the C'' arm — appended after R2-core, frozen off until then.
 	 */
 	semanticAnchorEnabled?: boolean;
 	/**
-	 * V3-WS pending targets (env ECODE_ANCHOR_ACCEPTANCE, comma/newline separated).
+	 * V3-WS pending targets (env TAUCODE_ANCHOR_ACCEPTANCE, comma/newline separated).
 	 * Acceptance outputs whose absence (no edit/write yet) surfaces as `pending:` in
 	 * the anchor block. Undefined when unset — the experiment harness supplies these
 	 * per-packet from its file-exists acceptance checks (out-of-fence integration).
 	 */
 	anchorAcceptanceTargets?: string[];
 	/**
-	 * WS-2 declaration capture flag (env ECODE_WS_DECLARATION). Default OFF.
+	 * WS-2 declaration capture flag (env TAUCODE_WS_DECLARATION). Default OFF.
 	 * Registers the declare_work_semantics tool and records model-authored
 	 * retention declarations in the semantic ledger. Capture-only: no projection
 	 * policy effect.
 	 */
 	workSemanticsDeclarationEnabled?: boolean;
 	/**
-	 * WS-3 sideband summarizer flag (env ECODE_SIDEBAND_SUMMARY). Default OFF.
+	 * WS-3 sideband summarizer flag (env TAUCODE_SIDEBAND_SUMMARY). Default OFF.
 	 * Capture-only: schedules an async summary write into the semantic ledger when
 	 * a read view is compacted; does not alter projection output.
 	 */
@@ -170,31 +183,31 @@ export interface DeterministicCompactionConfig extends ProjectionConfig {
 	sidebandSummaryMinTokens?: number;
 	sidebandSummaryModel?: string;
 	/**
-	 * WS-5 persistent ledger sink (env ECODE_LEDGER_PERSIST). Default OFF.
-	 * Write-only append JSONL under .ecode/ledger/. No read-back path.
+	 * WS-5 persistent ledger sink (env TAUCODE_LEDGER_PERSIST). Default OFF.
+	 * Write-only append JSONL under .taucode/ledger/. No read-back path.
 	 */
 	ledgerPersistEnabled?: boolean;
 	/**
-	 * WS-2.5 declaration tax probe (env ECODE_WS_DECLARE_NUDGE=every-turn).
+	 * WS-2.5 declaration tax probe (env TAUCODE_WS_DECLARE_NUDGE=every-turn).
 	 * Measurement-only: nudges the model to declare every turn and logs provider
 	 * output/reasoning usage. Never use in experiment arms.
 	 */
 	workSemanticsDeclareNudge?: DeclareNudgeMode;
 	/**
-	 * WS-4 projection policy (env ECODE_WS_POLICY). Default OFF. When enabled,
+	 * WS-4 projection policy (env TAUCODE_WS_POLICY). Default OFF. When enabled,
 	 * verified ledger semantics may protect bounded verbatim paths and substitute
 	 * compacted read summaries by form only.
 	 */
 	workSemanticsPolicyEnabled?: boolean;
 	workSemanticsVerbatimWindow?: number;
 	/**
-	 * EXP-WS placebo control (env ECODE_WS_PLACEBO). Default OFF. Appends a fixed,
+	 * EXP-WS placebo control (env TAUCODE_WS_PLACEBO). Default OFF. Appends a fixed,
 	 * token-targeted reminder on projected turns; carries no work semantics.
 	 */
 	placeboTailEnabled?: boolean;
 	placeboTailTargetTokens?: number;
 	/**
-	 * Branch C compact nudge (env ECODE_WS_NUDGE). Default OFF. Appends a fixed
+	 * Branch C compact nudge (env TAUCODE_WS_NUDGE). Default OFF. Appends a fixed
 	 * short orientation cue on projected turns only; carries no work semantics.
 	 */
 	compactNudgeTailEnabled?: boolean;
@@ -203,29 +216,29 @@ export interface DeterministicCompactionConfig extends ProjectionConfig {
 export function resolveConfig(): DeterministicCompactionConfig {
 	const compactionOptions: Partial<CompactionOptions> = {
 		keepRecentAssistantMessages: readNumberEnv(
-			"ECODE_KEEP_RECENT_ASSISTANT_MSGS",
+			"TAUCODE_KEEP_RECENT_ASSISTANT_MSGS",
 			DEFAULT_KEEP_RECENT_ASSISTANT_MSGS,
 		),
 	};
 	return {
-		compactAfterInputTokens: readNumberEnv("ECODE_COMPACT_AFTER_INPUT_TOKENS", DEFAULT_COMPACT_AFTER_INPUT_TOKENS),
+		compactAfterInputTokens: readNumberEnv("TAUCODE_COMPACT_AFTER_INPUT_TOKENS", DEFAULT_COMPACT_AFTER_INPUT_TOKENS),
 		compactionOptions,
-		seamBEnabled: readBoolEnv("ECODE_SEAM_B"),
-		trustProtocolEnabled: readBoolEnv("ECODE_TRUST_PROTOCOL"),
-		semanticAnchorEnabled: readBoolEnv("ECODE_SEMANTIC_ANCHOR"),
-		anchorAcceptanceTargets: readListEnv("ECODE_ANCHOR_ACCEPTANCE"),
-		workSemanticsDeclarationEnabled: readBoolEnv("ECODE_WS_DECLARATION"),
-		sidebandSummaryEnabled: readBoolEnv("ECODE_SIDEBAND_SUMMARY"),
-		sidebandSummaryMinTokens: readNumberEnv("ECODE_SIDEBAND_MIN_TOKENS", DEFAULT_SIDEBAND_MIN_TOKENS),
-		sidebandSummaryModel: process.env.ECODE_SIDEBAND_MODEL?.trim() || DEFAULT_SIDEBAND_MODEL,
-		ledgerPersistEnabled: readBoolEnv("ECODE_LEDGER_PERSIST"),
+		seamBEnabled: readBoolEnv("TAUCODE_SEAM_B"),
+		trustProtocolEnabled: readBoolEnv("TAUCODE_TRUST_PROTOCOL"),
+		semanticAnchorEnabled: readBoolEnv("TAUCODE_SEMANTIC_ANCHOR"),
+		anchorAcceptanceTargets: readListEnv("TAUCODE_ANCHOR_ACCEPTANCE"),
+		workSemanticsDeclarationEnabled: readBoolEnv("TAUCODE_WS_DECLARATION"),
+		sidebandSummaryEnabled: readBoolEnv("TAUCODE_SIDEBAND_SUMMARY"),
+		sidebandSummaryMinTokens: readNumberEnv("TAUCODE_SIDEBAND_MIN_TOKENS", DEFAULT_SIDEBAND_MIN_TOKENS),
+		sidebandSummaryModel: envGet("TAUCODE_SIDEBAND_MODEL")?.trim() || DEFAULT_SIDEBAND_MODEL,
+		ledgerPersistEnabled: readBoolEnv("TAUCODE_LEDGER_PERSIST"),
 		workSemanticsDeclareNudge:
-			(process.env.ECODE_WS_DECLARE_NUDGE ?? "").trim().toLowerCase() === "every-turn" ? "every-turn" : "off",
-		workSemanticsPolicyEnabled: readBoolEnv("ECODE_WS_POLICY"),
-		workSemanticsVerbatimWindow: readNumberEnv("ECODE_WS_VERBATIM_WINDOW", DEFAULT_WS_VERBATIM_WINDOW),
-		placeboTailEnabled: readBoolEnv("ECODE_WS_PLACEBO"),
-		placeboTailTargetTokens: readNumberEnv("ECODE_WS_PLACEBO_TOKENS", DEFAULT_PLACEBO_TARGET_TOKENS),
-		compactNudgeTailEnabled: readBoolEnv("ECODE_WS_NUDGE"),
+			(envGet("TAUCODE_WS_DECLARE_NUDGE") ?? "").trim().toLowerCase() === "every-turn" ? "every-turn" : "off",
+		workSemanticsPolicyEnabled: readBoolEnv("TAUCODE_WS_POLICY"),
+		workSemanticsVerbatimWindow: readNumberEnv("TAUCODE_WS_VERBATIM_WINDOW", DEFAULT_WS_VERBATIM_WINDOW),
+		placeboTailEnabled: readBoolEnv("TAUCODE_WS_PLACEBO"),
+		placeboTailTargetTokens: readNumberEnv("TAUCODE_WS_PLACEBO_TOKENS", DEFAULT_PLACEBO_TARGET_TOKENS),
+		compactNudgeTailEnabled: readBoolEnv("TAUCODE_WS_NUDGE"),
 	};
 }
 

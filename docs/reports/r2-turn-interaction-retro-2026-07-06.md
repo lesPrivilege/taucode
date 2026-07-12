@@ -40,7 +40,7 @@ and quality is not harmed. R2 shows that this inequality is workload-shaped.
 Harness behavior:
 
 - disables pi native compaction;
-- installs no ecode projection hook;
+- installs no taucode projection hook;
 - records observer metrics only;
 - preserves raw session history and raw tool results in the provider payload.
 
@@ -55,13 +55,13 @@ API-visible result:
 Harness behavior:
 
 - enables pi native compaction;
-- installs no ecode seam-A hook;
+- installs no taucode seam-A hook;
 - sets provider context window to 48k for comparability;
 - observes native compaction engagement.
 
 API-visible result:
 
-- DeepSeek receives pi's native summarization/compaction behavior, not ecode
+- DeepSeek receives pi's native summarization/compaction behavior, not taucode
   deterministic projection;
 - no `projected` turns appear in JSONL;
 - R1 and E1 observed native compaction 3/3; D1 observed it only 1/3, making two

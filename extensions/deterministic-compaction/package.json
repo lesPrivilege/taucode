@@ -1,8 +1,8 @@
 {
-  "name": "@ecode/deterministic-compaction",
+  "name": "@taucode/deterministic-compaction",
   "version": "0.1.0",
   "private": true,
-  "description": "pi extension: send-time deterministic context compaction (seam A context hook + optional seam B session_before_compact), backed by @ecode/compaction-core. Loads into pi via --extension.",
+  "description": "pi extension: send-time deterministic context compaction (seam A context hook + optional seam B session_before_compact), backed by @taucode/compaction-core. Loads into pi via --extension.",
   "type": "module",
   "keywords": [
     "pi-extension",
@@ -29,12 +29,12 @@
     "@earendil-works/pi-agent-core": "*",
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*",
-    "@ecode/compaction-core": "*"
+    "@taucode/compaction-core": "*"
   },
   "peerDependenciesMeta": {
     "@earendil-works/pi-agent-core": { "optional": true },
     "@earendil-works/pi-ai": { "optional": true },
     "@earendil-works/pi-coding-agent": { "optional": true },
-    "@ecode/compaction-core": { "optional": true }
+    "@taucode/compaction-core": { "optional": true }
   }
 }

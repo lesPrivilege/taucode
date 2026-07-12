@@ -65,7 +65,7 @@ interface Harness {
 }
 
 async function buildHarness(compactAfterInputTokens: number): Promise<Harness> {
-	const tempDir = join(tmpdir(), `pi-ecode-obs-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+	const tempDir = join(tmpdir(), `pi-taucode-obs-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	mkdirSync(tempDir, { recursive: true });
 	const agentDir = join(tempDir, "agent");
 	mkdirSync(agentDir, { recursive: true });

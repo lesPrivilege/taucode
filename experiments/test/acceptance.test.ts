@@ -13,7 +13,7 @@ import { parseAcceptance } from "../lib/packet.js";
 
 let ws: string;
 beforeEach(() => {
-	ws = mkdtempSync(join(tmpdir(), "ecode-accept-"));
+	ws = mkdtempSync(join(tmpdir(), "taucode-accept-"));
 	mkdirSync(join(ws, "src"), { recursive: true });
 	writeFileSync(join(ws, "src", "present.ts"), "export function foo(): number { return 1; }\n// describe(\n", "utf8");
 });

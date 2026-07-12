@@ -10,7 +10,7 @@ import { defineConfig } from "vitest/config";
  * Transitive deps resolve from the pi/packages/coding-agent/node_modules
  * tree that owns the resolved sources.
  *
- * `@ecode/context-pruning` is intentionally NOT aliased here: this
+ * `@taucode/context-pruning` is intentionally NOT aliased here: this
  * extension never imports it by package name — src/context-pruning.ts is a
  * relative-path barrel into packages/context-pruning/src/index.ts (G4a/G4b
  * convention), so there's nothing for a package-name alias to intercept.

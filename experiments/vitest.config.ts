@@ -24,7 +24,7 @@ export default defineConfig({
 		testTimeout: 30000,
 		// Only the harness's OWN tests. Prepared taucode snapshots under snapshots/
 		// (built by prepare-snapshot.ts) contain taucode's test suites — those must
-		// NOT be collected here; they run under taucode's toolchain, not ecode's.
+		// NOT be collected here; they run under the phase-1 standalone toolchain.
 		include: ["test/**/*.test.ts"],
 		exclude: ["snapshots/**", "workspaces/**", "node_modules/**"],
 		server: {
@@ -35,7 +35,7 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: [
-			{ find: /^@ecode\/compaction-core$/, replacement: compactionCoreSrc },
+			{ find: /^@taucode\/compaction-core$/, replacement: compactionCoreSrc },
 			{ find: /^@earendil-works\/pi-ai$/, replacement: aiSrcIndex },
 			{ find: /^@earendil-works\/pi-ai\/compat$/, replacement: aiSrcCompat },
 			{ find: /^@earendil-works\/pi-ai\/oauth$/, replacement: aiSrcOAuth },

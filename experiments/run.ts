@@ -93,7 +93,7 @@ interface Args {
 	contextWindow?: number;
 	/**
 	 * G4c — arm T (TRC) tuning. Meaningful only when `--arm T`; translated into
-	 * the ECODE_TRC_* env-var shape frontier-pruning's own (unmodified)
+	 * the TAUCODE_TRC_* env-var shape frontier-pruning's own (unmodified)
 	 * parseTrcFlags already reads, so the extension's flags surface is reused
 	 * verbatim rather than re-implemented here. All optional and OMITTED
 	 * (not defaulted here) when unset, so parseTrcFlags's own defaults apply
@@ -149,8 +149,18 @@ function parseArgs(argv: string[]): Args {
 	};
 }
 
+/** TAUCODE_* primary; ECODE_* legacy when primary unset (docs/env-var-compat.md). */
+function envGet(name: string): string | undefined {
+	const primary = process.env[name];
+	if (primary !== undefined) return primary;
+	if (name.startsWith("TAUCODE_")) {
+		return process.env[`ECODE_${name.slice("TAUCODE_".length)}`];
+	}
+	return undefined;
+}
+
 function envBool(name: string): boolean {
-	const raw = (process.env[name] ?? "").trim().toLowerCase();
+	const raw = (envGet(name) ?? "").trim().toLowerCase();
 	return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
 }
 
@@ -268,21 +278,21 @@ async function run(args: Args): Promise<void> {
 	const scenario = resolveScenario(args.scenario, args.packetsDoc);
 	const packetScenario = isPacketScenario(scenario) ? scenario : null;
 	const extensionFlags = {
-		semanticAnchor: armSpec.flags.semanticAnchor || envBool("ECODE_SEMANTIC_ANCHOR"),
-		workSemanticsDeclaration: armSpec.flags.workSemanticsDeclaration || envBool("ECODE_WS_DECLARATION"),
-		sidebandSummary: armSpec.flags.sidebandSummary || envBool("ECODE_SIDEBAND_SUMMARY"),
-		workSemanticsPolicy: armSpec.flags.workSemanticsPolicy || envBool("ECODE_WS_POLICY"),
-		placeboTokenMatching: armSpec.flags.placeboTokenMatching || envBool("ECODE_WS_PLACEBO"),
-		compactNudgeTail: armSpec.flags.compactNudgeTail || envBool("ECODE_WS_NUDGE"),
+		semanticAnchor: armSpec.flags.semanticAnchor || envBool("TAUCODE_SEMANTIC_ANCHOR"),
+		workSemanticsDeclaration: armSpec.flags.workSemanticsDeclaration || envBool("TAUCODE_WS_DECLARATION"),
+		sidebandSummary: armSpec.flags.sidebandSummary || envBool("TAUCODE_SIDEBAND_SUMMARY"),
+		workSemanticsPolicy: armSpec.flags.workSemanticsPolicy || envBool("TAUCODE_WS_POLICY"),
+		placeboTokenMatching: armSpec.flags.placeboTokenMatching || envBool("TAUCODE_WS_PLACEBO"),
+		compactNudgeTail: armSpec.flags.compactNudgeTail || envBool("TAUCODE_WS_NUDGE"),
 	};
-	const declareNudge = (process.env.ECODE_WS_DECLARE_NUDGE ?? "").trim().toLowerCase() === "every-turn" ? "every-turn" : "off";
-	const anchorAcceptBefore = process.env.ECODE_ANCHOR_ACCEPTANCE;
+	const declareNudge = (envGet("TAUCODE_WS_DECLARE_NUDGE") ?? "").trim().toLowerCase() === "every-turn" ? "every-turn" : "off";
+	const anchorAcceptBefore = process.env.TAUCODE_ANCHOR_ACCEPTANCE ?? process.env.ECODE_ANCHOR_ACCEPTANCE;
 	if (packetScenario && extensionFlags.semanticAnchor) {
 		const targets = packetScenario.acceptance
 			.filter(isFileExistsCheck)
 			.map((check) => check.path)
 			.filter(Boolean);
-		if (targets.length > 0) process.env.ECODE_ANCHOR_ACCEPTANCE = targets.join(",");
+		if (targets.length > 0) process.env.TAUCODE_ANCHOR_ACCEPTANCE = targets.join(",");
 	}
 	const provider = resolveProvider(args.provider, scenario, {
 		...(Number.isFinite(args.contextWindow) ? { contextWindow: args.contextWindow } : {}),
@@ -297,22 +307,22 @@ async function run(args: Args): Promise<void> {
 	};
 
 	// G4c — TRC (arm T) config, only meaningful when arm.trcInstalled. CLI
-	// --trc-* flags translate into the ECODE_TRC_* env-var shape
+	// --trc-* flags translate into the TAUCODE_TRC_* env-var shape
 	// frontier-pruning's own parseTrcFlags reads (single source of truth for
-	// TRC's defaults — see Args doc); ECODE_TRC is forced "1" so selecting
+	// TRC's defaults — see Args doc); TAUCODE_TRC is forced "1" so selecting
 	// `--arm T` alone is sufficient, mirroring how other arms don't need a
 	// redundant separate switch. Real process.env is the base so any
-	// ECODE_TRC_* var already exported by the caller still passes through.
+	// TAUCODE_TRC_* var already exported by the caller still passes through.
 	const trcEnv: EnvLike | undefined = arm.trcInstalled
 		? {
 				...process.env,
-				ECODE_TRC: "1",
-				...(args.trcTriggerTokens !== undefined ? { ECODE_TRC_TRIGGER_TOKENS: String(args.trcTriggerTokens) } : {}),
-				...(args.trcKeep !== undefined ? { ECODE_TRC_KEEP: String(args.trcKeep) } : {}),
-				...(args.trcClearAtLeast !== undefined ? { ECODE_TRC_CLEAR_AT_LEAST: String(args.trcClearAtLeast) } : {}),
-				...(args.trcExcludeTools !== undefined ? { ECODE_TRC_EXCLUDE_TOOLS: args.trcExcludeTools } : {}),
-				...(args.trcClearToolInputs !== undefined ? { ECODE_TRC_CLEAR_TOOL_INPUTS: args.trcClearToolInputs } : {}),
-				ECODE_TRC_PRESERVE_ERRORS: args.trcPreserveErrors ? "1" : "0",
+				TAUCODE_TRC: "1",
+				...(args.trcTriggerTokens !== undefined ? { TAUCODE_TRC_TRIGGER_TOKENS: String(args.trcTriggerTokens) } : {}),
+				...(args.trcKeep !== undefined ? { TAUCODE_TRC_KEEP: String(args.trcKeep) } : {}),
+				...(args.trcClearAtLeast !== undefined ? { TAUCODE_TRC_CLEAR_AT_LEAST: String(args.trcClearAtLeast) } : {}),
+				...(args.trcExcludeTools !== undefined ? { TAUCODE_TRC_EXCLUDE_TOOLS: args.trcExcludeTools } : {}),
+				...(args.trcClearToolInputs !== undefined ? { TAUCODE_TRC_CLEAR_TOOL_INPUTS: args.trcClearToolInputs } : {}),
+				TAUCODE_TRC_PRESERVE_ERRORS: args.trcPreserveErrors ? "1" : "0",
 			}
 		: undefined;
 	const trcFlags = trcEnv ? parseTrcFlags(trcEnv) : null;
@@ -323,7 +333,7 @@ async function run(args: Args): Promise<void> {
 	//   (--workspace-from) copy a prepared snapshot's workspace/ in (cheap, per-run),
 	//             recording {source, manifestHash} for provenance. run.ts does ONLY
 	//             this cheap copy; building the snapshot is prepare-snapshot.ts's job.
-	const tempDir = join(tmpdir(), `pi-ecode-run-${safeName(armSpec.id)}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+	const tempDir = join(tmpdir(), `pi-taucode-run-${safeName(armSpec.id)}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	let workspaceProvenance: { source: string; manifestHash: string | null } | undefined;
 	if (args.workspaceFrom) {
 		const copied = copyWorkspaceFrom(args.workspaceFrom, tempDir);
@@ -538,7 +548,7 @@ async function run(args: Args): Promise<void> {
 			compact_after_input_tokens: arm.seamAInstalled ? args.compactAfter : null,
 			keep_recent_assistant_messages: arm.seamAInstalled ? args.keepRecent : null,
 			provider_context_window: Number.isFinite(args.contextWindow) ? args.contextWindow : null,
-			anchor_acceptance_targets: process.env.ECODE_ANCHOR_ACCEPTANCE ?? null,
+			anchor_acceptance_targets: process.env.TAUCODE_ANCHOR_ACCEPTANCE ?? null,
 			extension_flags: {
 				semantic_anchor: extensionFlags.semanticAnchor,
 				ws_declaration: extensionFlags.workSemanticsDeclaration,
@@ -605,10 +615,10 @@ async function run(args: Args): Promise<void> {
 	];
 
 	const header = packetScenario
-		? `# ecode experiments run — arm ${armSpec.id} (${armSpec.label}) — packet ${packetScenario.metadata.id}\n` +
+		? `# taucode experiments run — arm ${armSpec.id} (${armSpec.label}) — packet ${packetScenario.metadata.id}\n` +
 			`# provider=${args.provider} compact-after=${args.compactAfter} keep-recent=${args.keepRecent} seam-b=${seamBInstalled}\n` +
 			`# data_kind=${dataKind}${workspaceProvenance ? ` workspace-from=${workspaceProvenance.source}` : ""}\n`
-		: `# ecode experiments run — arm ${armSpec.id} (${armSpec.label}) — scenario ${scenario.id}\n` +
+		: `# taucode experiments run — arm ${armSpec.id} (${armSpec.label}) — scenario ${scenario.id}\n` +
 			`# provider=${args.provider} compact-after=${args.compactAfter} keep-recent=${args.keepRecent} seam-b=${seamBInstalled}\n` +
 			`# SYNTHETIC SMOKE FIXTURE — not a real experimental workload\n`;
 	const body = header + rows.map((r) => JSON.stringify(r)).join("\n") + "\n";
@@ -624,8 +634,8 @@ async function run(args: Args): Promise<void> {
 	);
 
 	session.dispose();
-	if (anchorAcceptBefore === undefined) delete process.env.ECODE_ANCHOR_ACCEPTANCE;
-	else process.env.ECODE_ANCHOR_ACCEPTANCE = anchorAcceptBefore;
+	if (anchorAcceptBefore === undefined) delete process.env.TAUCODE_ANCHOR_ACCEPTANCE;
+	else process.env.TAUCODE_ANCHOR_ACCEPTANCE = anchorAcceptBefore;
 	if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
 	if (existsSync(agentDir)) rmSync(agentDir, { recursive: true, force: true });
 }

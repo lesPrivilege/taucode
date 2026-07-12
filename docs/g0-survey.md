@@ -1,7 +1,7 @@
 # G0 Survey — pi-mono source re-verification
 
 Fresh clone of `https://github.com/badlogic/pi-mono` at
-`/Users/lesprivilege/Projects/ecode/pi/`.
+`/Users/lesprivilege/Projects/taucode/pi/`.
 
 - Clone HEAD: `ee24a9ec54a9602d55dc7ac767c270cec806c291` — "feat(ai): refresh generated model catalogs" (2026-07-04, branch `main`).
 - `git remote -v` inside `pi/`: `origin https://github.com/badlogic/pi-mono.git` (fetch + push).
@@ -13,7 +13,7 @@ Fresh clone of `https://github.com/badlogic/pi-mono` at
     loop, session, compaction primitives.
   - `packages/ai/` — the provider/API layer (`@earendil-works/pi-ai`).
   All citations below are from the fresh clone (absolute paths omit the
-  `/Users/lesprivilege/Projects/ecode/pi/` prefix).
+  `/Users/lesprivilege/Projects/taucode/pi/` prefix).
 
 All facts are stated as the current source reads. No recommendations.
 
@@ -300,9 +300,9 @@ branch-summary path, not the main compaction settings.
    `settings-manager.ts:104`，global/project settings.json 均可）。目录可带
    package.json pi manifest 或 index.ts（`resolveExtensionEntries`，loader.ts:685-691）。
 
-对 ecode 的落法：extension 留在 `ecode/extensions/deterministic-compaction/`，
+对 taucode 的落法：extension 留在 `taucode/extensions/deterministic-compaction/`，
 在**运行 cwd 的 project settings**（`<workdir>/.pi/settings.json`）里写
-`"extensions": ["<ecode>/extensions/deterministic-compaction"]`，或在被试工作目录
+`"extensions": ["<taucode>/extensions/deterministic-compaction"]`，或在被试工作目录
 `.pi/extensions/` 放 symlink。两种都不触碰 `pi/` 子树，diff=0 约束保持。
 
 ---
@@ -357,18 +357,18 @@ workspace 内的单个 `.md`。既然 `read` 能直接吃 cwd 外的绝对路径
 再由被试自行前缀）的 `pi/...` 路径读取即可，**不需要**把 `pi/` symlink 进 workspace、也**不需要**把
 E 类以 `pi/` 作 cwd 跑——原运行协议里「E packet 以 `pi/` 为只读对象、产出写自己 workspace」在
 当前 pi 语义下开箱可行，无 harness 侧改动、无 `pi/` 改动。（若未来某版 pi 收紧为 cwd-relative-only，
-届时最小修复为：在 run workspace 里放一个指向 `<ecode>/pi` 的 symlink，或仅对 E 类以 `pi/` 作 cwd
+届时最小修复为：在 run workspace 里放一个指向 `<taucode>/pi` 的 symlink，或仅对 E 类以 `pi/` 作 cwd
 ——两者都不触碰 `pi/` 子树。此为预案，当前不需要。）
 
 ## Item 8 — DeepSeek `reasoning_content` replay semantics（补录 2026-07-05，V2-TP 收尾核对）
 
 **Verdict: CONFIRMED — 零改动闭环。pi-ai 已内化此问题，无需 extension 侧补偿。**
 
-前提复核：DeepSeek 要求重放 multi-turn 消息时带回 `reasoning_content` 字段（非剥离），否则续对话会失败/劣化。此前预设 ecode compaction 需要「保全 reasoning_content」额外逻辑。
+前提复核：DeepSeek 要求重放 multi-turn 消息时带回 `reasoning_content` 字段（非剥离），否则续对话会失败/劣化。此前预设 taucode compaction 需要「保全 reasoning_content」额外逻辑。
 
 实查：pi-ai 的 `openai-completions.ts` 已对 DeepSeek 系 endpoint 做了 cache-friendly 处理（#3636 合入）：send 时自动将 `thinking` block 映射为 DeepSeek 的 `reasoning_content` 前缀块，且 response 侧将 reasoning 解回 `thinking` block 入 session。即：thinking 在 pi 的 `AgentMessage` 里始终保留，转换只发生在 send/recv 边界。
 
-对 ecode extension 的影响 = 零：
+对 taucode extension 的影响 = 零：
 - compaction-core 不碰 `thinking` 字段（投影只处理 toolCall args 和 tool result content）
 - context hook 的 send payload 传出时包含完整 assistant message（含 thinking）
 - pi-ai 在 provider 层负责格式映射（extension 从不直接看 reasoning_content）

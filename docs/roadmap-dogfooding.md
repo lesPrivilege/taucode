@@ -1,6 +1,6 @@
 # Roadmap — dogfooding：从验证台到日常主力
 
-2026-07-05。前提：G0–G1c 完成，coding agent loop 有保证。本篇回答：ecode
+2026-07-05。前提：G0–G1c 完成，coding agent loop 有保证。本篇回答：taucode
 （pi + deterministic-compaction extension）如何变成日常可用的 coding agent，
 且**日常使用本身持续产出实验级数据**——dogfooding 不是实验的替代，是实验的
 环境化：G2 是受控配对，dogfooding 是常开观测面下的自然采样。

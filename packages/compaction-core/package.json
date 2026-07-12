@@ -1,5 +1,5 @@
 {
-  "name": "@ecode/compaction-core",
+  "name": "@taucode/compaction-core",
   "version": "0.1.0",
   "description": "Standalone deterministic context-compaction core: pure functions with injectable strategies, tool-name matching, and path/hash extraction. Harness-agnostic.",
   "keywords": [

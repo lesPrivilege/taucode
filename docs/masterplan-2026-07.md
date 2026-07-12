@@ -1,4 +1,4 @@
-# ecode 总纲 — 2026-07-05 session 收束与续行索引
+# taucode 总纲 — 2026-07-05 session 收束与续行索引
 
 一天内从 working paper 探索到可跑验证台的全部裁决归档。本文是**唯一续行
 入口**:数据回来后,按第三节裁决点逐条落。文中每个方向都标注触发条件——
@@ -12,7 +12,7 @@
 | 观测 | DF1 三命令 + 触发标记、DF2 runtime 调参 + 事件记录、ambient telemetry（含 flag 状态） | launcher 双轮实测 |
 | 信任协议 | V2-TP 全切片（flag 默认 off）:ledger、summary hash+diffstat、stale-view hint 尾区注入 | 100/100 + 野外 R3/R4 决定性通过 |
 | TUI | DF-TUI S1-S5(gate 条/触发标记/CH 微条/hint 指示//compact-dash) | 单元级验收,S2 独立 audit |
-| launcher | `ecode` 命令:隔离 profile、env 路由、自愈 symlink、可选 profile 文件 | T1-T10 + R1-R5,0 FAIL |
+| launcher | `taucode` 命令:隔离 profile、env 路由、自愈 symlink、可选 profile 文件 | T1-T10 + R1-R5,0 FAIL |
 | 纪律 | loop-protocol（改/记分界、校验节流、弱模型围栏）、pre-flight、绊线、pathspec commit | 多轮实战修订 |
 
 ## 二、进行中/待执行
@@ -20,7 +20,7 @@
 1. **Codex TUI 总验收**:五图叙事（唤醒 prompt 已给）。副产品:ambient 采集。
 2. **G2 round 1**（全项目关键路径,人侧）:key → `prepare-snapshot.ts` →
    按 `g2-run-manifest-round1.md` 12 run（臂序已定死）。v1 冻结中。
-3. **G2 round 2**:+C' 臂（`ECODE_TRUST_PROTOCOL=1`),(d) 率 flag-on/off
+3. **G2 round 2**:+C' 臂（`TAUCODE_TRUST_PROTOCOL=1`),(d) 率 flag-on/off
    对比 = 信任协议生死判据。
 
 ## 三、双复盘裁决点（数据到位后,按序裁）
@@ -65,7 +65,7 @@
 
 pi 原生有 skills 系统（`src/core/skills.ts`,SKILL.md 约定——g0 时代
 确认的免费件）。工作不是造系统,是**验证 + 首个可用件**:
-1. 验证 skills 在 ecode 隔离 profile（`PI_CODING_AGENT_DIR`）下的
+1. 验证 skills 在 taucode 隔离 profile（`PI_CODING_AGENT_DIR`）下的
    发现/加载路径(类比 extension 的 Item 6 摸底,产出 survey Item 9);
 2. 写第一个最小 skill:**web-fetch**(SKILL.md + bash curl 脚本,
    取 URL → 纯文本;明确边界:无 JS 渲染、超时、大小上限);

@@ -1,4 +1,4 @@
-# Goal 切分 — ecode：context 经济验证台（本 repo 为工作根）
+# Goal 切分 — taucode：context 经济验证台（本 repo 为工作根）
 
 2026-07-05。上游依据：`docs/roadmap-context-economy-2026-07.md`（已收束入本 repo）。
 布局：`pi/`（上游 fork，G0 建立）、`packages/compaction-core/`（G1a）、
@@ -57,7 +57,7 @@ taucode 本体在兄弟目录 `../taucode/`，只读引用，不改。
 
 ## G1b · pi extension + adapter（依赖 G0 + G1a；已按 g0-survey 修订）
 
-**前置**：ecode 根 `git init`（agent 产出须可 diff 审计）。无需 provider 真 key（见任务 4）。
+**前置**：taucode 根 `git init`（agent 产出须可 diff 审计）。无需 provider 真 key（见任务 4）。
 **输入**：本 packet + `docs/g0-survey.md` + `docs/taucode-on-pi-integration.md` 第 3 节 + `packages/compaction-core/` 的公开 API。
 
 **任务**：
@@ -197,7 +197,7 @@ runtime policy 自动化的样本源。
 原则重申:**harness 只注入可机械验证的事实,永不注入信心。**
 
 **基线纪律（最高优先约束）**：全部改动置于 feature flag
-`ECODE_TRUST_PROTOCOL`（默认 **off**）之后。G2 round 1 的 C 臂必须在
+`TAUCODE_TRUST_PROTOCOL`（默认 **off**）之后。G2 round 1 的 C 臂必须在
 flag-off 下与 v1 字节等价——round 2 才开 C' 臂（flag-on）对照。
 
 **任务**（移植 + 接线为主,发明为辅;taucode 机件清单已核实存在）：
@@ -303,7 +303,7 @@ estimate`）,新增渲染沿用同一措辞。
   path 和 birth→current hash 对
 - 数据源:`staleViewHints()` 返回值（context hook 内已计算,无需
   重算——把 hint 列表缓存到 module-level holder 供 widget 读取）
-- 门控:`ECODE_TRUST_PROTOCOL` off 时不渲染、不注册、不占空间
+- 门控:`TAUCODE_TRUST_PROTOCOL` off 时不渲染、不注册、不占空间
 - 验收:flag-on mock 有 hint → 标记可见;flag-off → 无渲染;
   flag-on 但无 stale → 无渲染;纯函数测试
 
@@ -387,7 +387,7 @@ estimate`）,新增渲染沿用同一措辞。
    同通道,同前缀纪律:send-time only、byte-stable 区外)。
 2. per-tool 摘要结构升级:read summary 加导出符号清单(确定性解析,
    仅 .ts 起步);edit summary 已有 hash+diffstat(V2-TP)。
-3. flag:`ECODE_SEMANTIC_ANCHOR`,默认 off——**R2-core 的 C 臂冻结
+3. flag:`TAUCODE_SEMANTIC_ANCHOR`,默认 off——**R2-core 的 C 臂冻结
    在现行 v1,本策略作为 C'' 臂在 core 之后追加评估**(与 Codex
    预算的 gate-release 结构一致)。建设可与 G3-AR 并行,但数字必须
    排队,不得混入 R2-core。
@@ -404,7 +404,7 @@ E1 类任务 static acceptance 不再缺席。
 > 自审抓获 failed-edit/pending 正确性 bug——RED→GREEN 修复在案)。
 > **裁定**:① V3-WS 留分支不并 main,R2-core 全程以 main(v1)跑
 > C 臂,core 完成后并入再跑 C'' 追加——基线论证保持无懈可击;
-> ② `ECODE_ANCHOR_ACCEPTANCE` 的 harness 侧接线归 experiments
+> ② `TAUCODE_ANCHOR_ACCEPTANCE` 的 harness 侧接线归 experiments
 > (run.ts 从 packet 的 file-exists 行提取路径填 env,仅 C'' 臂),
 > 作为 R2-preflight 预备项交 Codex;③ read summary 符号清单
 > (V3-WS 设计 2)确认为独立后续 packet,不并本轮;④ R2-preflight

@@ -1,8 +1,15 @@
-# ecode
+# taucode
 
 一个绑定 DeepSeek 的开源验证台：在最薄的 harness（[pi](https://github.com/badlogic/pi-mono)）
 上，把 agent 的 context 管理——compaction、prompt cache、信任协议——做成
-**可观测、可复现、可证伪**的实验对象。名字取 *e*：自然对数底，与 pi 相应。
+**可观测、可复现、可证伪**的实验对象。名字取 **τ = 2π**——不是新的圆，只是更紧的参数化。
+
+> **身份说明（2026-07）**：本仓库是 context 管理研究线的 **canonical** 树。阶段一是
+> 自建 standalone agent（v1.0, 2026-05-27，已归档）；阶段二是在 pi fork 上的受控实验
+> 与 frontier 机制复刻。阶段二期间曾用名 **ecode**（自然对数底 e，与 pi 相应）；对外
+> 身份现统一为 **taucode**。GitHub 上 `lesPrivilege/ecode` 已 301 到
+> `lesPrivilege/taucode`。环境变量与 profile 目录的旧名仍双读兼容，见
+> [`docs/env-var-compat.md`](docs/env-var-compat.md)。
 
 ## 命题：编译经济学
 
@@ -33,7 +40,7 @@ cache 按字节匹配）与文件系统持久性（hash 溯源）上的机制；
 循环病理 / 确证螺旋），每类在 telemetry 里机械可判。对模型方，这套
 分类学是现成的训练信号与能力等高线；对下游，它是选型判据。
 理论骨架见 working paper《外化天花板与跨层 cache 契约》；对外预览：
-https://lesprivilege.github.io/ecode/
+https://lesprivilege.github.io/taucode/
 
 ## 已实证（受控数据，真实 DeepSeek API）
 
@@ -66,7 +73,7 @@ https://lesprivilege.github.io/ecode/
 | `packages/compaction-core/` | 确定性 compaction 纯函数 + 报告层（零依赖） |
 | `extensions/deterministic-compaction/` | pi extension：投影、信任协议、语义锚点、TUI 观测 |
 | `experiments/` | 多臂对照 harness：plan / run / compare + artifact 留存 |
-| `bin/ecode` | launcher：隔离 profile + env 路由，vanilla pi 为日常对照组 |
+| `bin/taucode` | launcher：隔离 profile + env 路由，vanilla pi 为日常对照组 |
 
 ## 开发起步（fresh checkout）
 
@@ -75,7 +82,7 @@ https://lesprivilege.github.io/ecode/
 ```bash
 git clone https://github.com/badlogic/pi-mono.git pi   # 在 repo 根内，作为 pi/
 (cd pi && npm ci)                                       # pi 是 npm workspaces 单体仓
-(cd pi && npm run build)                                # 仅 bin/ecode launcher 需要
+(cd pi && npm run build)                                # 仅 bin/taucode launcher 需要
 ```
 
 之后 `packages/compaction-core`、`extensions/deterministic-compaction`、

@@ -15,7 +15,7 @@ Inputs: `r2-verdict.md`, `r2-turn-interaction-retro-2026-07-06.md`,
 ## Notation
 
 - **C**: deterministic projection (seam-A).
-- **C''**: C + deterministic work anchor (`ECODE_SEMANTIC_ANCHOR`).
+- **C''**: C + deterministic work anchor (`TAUCODE_SEMANTIC_ANCHOR`).
 - **C'''**: C'' + model-declared retention sidecar (in-band tool call).
 - **C-SB**: C'' + sideband summarizer (cheap off-loop LLM writes prose
   summaries into the ledger; main transcript byte-stable).
@@ -84,7 +84,7 @@ rules in R4. This keeps the "one system, three faces" invariant from the index.
 
 ## Deliverable 1 — Declaration Sidecar Schema
 
-Tool exposed to the model when `ECODE_WS_DECLARATION=1`:
+Tool exposed to the model when `TAUCODE_WS_DECLARATION=1`:
 
 ```json
 {
@@ -166,7 +166,7 @@ Module: `projection-policy.ts` (arch doc §5), pure function:
 
 | Declaration | Policy effect (round 1) |
 | --- | --- |
-| `verbatim`, verified | protect path from projection for a bounded window (`ECODE_WS_VERBATIM_WINDOW`, default 8 turns) |
+| `verbatim`, verified | protect path from projection for a bounded window (`TAUCODE_WS_VERBATIM_WINDOW`, default 8 turns) |
 | `semantic`, verified, hash matches, no prior contradiction | form-only substitution: ledger line + summary replaces head-tail extract; compaction set unchanged vs C'' |
 | `routing` / `disposable` | no policy effect; calibration counters only |
 | unverified / malformed | no effect; metric |
@@ -182,13 +182,13 @@ a separate later packet.
 
 ## Deliverable 4 — Sideband Summarizer (C-SB)
 
-Flag: `ECODE_SIDEBAND_SUMMARY=1`. Model: `ECODE_SIDEBAND_MODEL`
+Flag: `TAUCODE_SIDEBAND_SUMMARY=1`. Model: `TAUCODE_SIDEBAND_MODEL`
 (default: same provider, non-thinking cheap tier).
 
 Mechanics:
 
 - at seam-A projection time, for each view entering compaction with estimated
-  payload ≥ `ECODE_SIDEBAND_MIN_TOKENS` (default 2k), fire an async summarizer
+  payload ≥ `TAUCODE_SIDEBAND_MIN_TOKENS` (default 2k), fire an async summarizer
   call: input = view content + packet task statement excerpt; output ≤ 200
   tokens prose;
 - write result to ledger as `kind: "summary"`, `author: "sideband"`, keyed
@@ -285,7 +285,7 @@ Ordered; each lands independently with tests green and flag-off byte-identity.
   model-inband | sideband`, inert `declaration` records, and inert `summary`
   records with optional provider-token cost. No producer or policy behavior.
 - **WS-2 Declaration capture** — `work-semantics-declaration.ts` + tool
-  registration behind `ECODE_WS_DECLARATION`; capture-only, no policy effect.
+  registration behind `TAUCODE_WS_DECLARATION`; capture-only, no policy effect.
   Acceptance: parser test matrix (Deliverable 5); adapter regression;
   metrics rows appear in JSONL.
   Status 2026-07-06: landed as `work-semantics-declaration.ts` +
@@ -293,7 +293,7 @@ Ordered; each lands independently with tests green and flag-off byte-identity.
   verification, one-line ack, and online re-read calibration in
   `SemanticLedger.recordView`. Extension tests 161/161, experiments tests 47/47,
   both typechecks pass.
-- **WS-3 Sideband summarizer** — behind `ECODE_SIDEBAND_SUMMARY`, mock
+- **WS-3 Sideband summarizer** — behind `TAUCODE_SIDEBAND_SUMMARY`, mock
   provider in tests. Acceptance: async/non-blocking, stillborn-on-edit, cost
   rows, flag-off identity.
   Status 2026-07-06: landed as `sideband-summary.ts`; async read-summary
@@ -304,8 +304,8 @@ Ordered; each lands independently with tests green and flag-off byte-identity.
   Acceptance: policy test matrix; projected turns log which record changed
   policy; compaction-set identity vs C'' fixture.
   Status 2026-07-06: landed as `projection-policy.ts` plus compaction-core
-  protected-path injection. `ECODE_WS_POLICY` is default-off; verified
-  `verbatim` declarations protect paths for `ECODE_WS_VERBATIM_WINDOW` turns,
+  protected-path injection. `TAUCODE_WS_POLICY` is default-off; verified
+  `verbatim` declarations protect paths for `TAUCODE_WS_VERBATIM_WINDOW` turns,
   and verified semantic declarations / sideband summaries can replace compacted
   read summary text by form only. Projection diffs stay unchanged for
   substitution cases.
@@ -325,7 +325,7 @@ Two rulings added after WS-1.5, from the cowork discussion.
 
 R10 — **Declaration tax probe (WS-2.5).** The in-band reasoning/output tax
 (R2 "known tax, unresolved") gets its own cheap measurement instead of waiting
-for E1. Mechanism: `ECODE_WS_DECLARE_NUDGE=every-turn` — a prompt nudge asking
+for E1. Mechanism: `TAUCODE_WS_DECLARE_NUDGE=every-turn` — a prompt nudge asking
 the model to emit one `declare_work_semantics` call per turn. Measured in
 dogfooding or mock runs, paired against an identical no-nudge run:
 
@@ -340,18 +340,18 @@ combined with any experiment arm. Output: one number the R8 branch can cite —
 "an in-band declaration costs ~X output + Y reasoning tokens per turn."
 
 R11 — **Persistent hash-addressed ledger (WS-5 write-only, WS-6 resume).**
-The extension already extracts semantic events; when ecode codes ecode, those
+The extension already extracts semantic events; when taucode codes taucode, those
 facts should outlive the session for work continuation and decision reference.
 
 WS-5 scope (write-only):
 
-- flag `ECODE_LEDGER_PERSIST=1`, default off;
-- append-only JSONL at `.ecode/ledger/<session-id>.jsonl`, one record per
+- flag `TAUCODE_LEDGER_PERSIST=1`, default off;
+- append-only JSONL at `.taucode/ledger/<session-id>.jsonl`, one record per
   ledger entry (same shapes as Deliverable 2, plus session id + timestamp);
 - `declaration.decisions`, `pending`, edits, and test results are the
   high-value continuation records; read views persist as hash lines only
   (storage-not-prose holds on disk too);
-- `.ecode/ledger/` is gitignored by default; committing is a user choice —
+- `.taucode/ledger/` is gitignored by default; committing is a user choice —
   hash-addressed records keep diffs mergeable if committed;
 - persistence must be flag-off in all experiment manifests; baselines stay
   uncontaminated;
@@ -400,15 +400,15 @@ Dispatch additions:
 - **WS-2.5 Tax probe** — after WS-2. Acceptance: paired-run JSONL rows with
   provider-unit declaration cost; nudge flag has its own off-state identity
   fixture.
-  Status 2026-07-06: landed as `tax-probe.ts`; `ECODE_WS_DECLARE_NUDGE=every-turn`
+  Status 2026-07-06: landed as `tax-probe.ts`; `TAUCODE_WS_DECLARE_NUDGE=every-turn`
   appends a volatile nudge and writes per-turn output/reasoning/declaration-only
-  JSONL rows under `.ecode/ws-tax-probe/`.
+  JSONL rows under `.taucode/ws-tax-probe/`.
 - **WS-5 Ledger persistence** — parallel-safe with WS-2/WS-3 (consumes the
   ledger surface, adds a sink; only shared file is the binder's flag wiring).
   Acceptance: flag-off writes nothing; JSONL schema fixture; no read-back path
   exists.
-  Status 2026-07-06: landed as `ledger-persistence.ts`; `ECODE_LEDGER_PERSIST=1`
-  writes append-only JSONL under `.ecode/ledger/`, persists read views as hash
+  Status 2026-07-06: landed as `ledger-persistence.ts`; `TAUCODE_LEDGER_PERSIST=1`
+  writes append-only JSONL under `.taucode/ledger/`, persists read views as hash
   lines only, and has no read-back path.
 - **WS-2 amendment (R12)** — declaration parser computes `decl_id` over
   canonical JSON; ledger records carry `id`; canonicalization fixture

@@ -1,12 +1,12 @@
 # Launcher Test — Interactive Round (live DeepSeek key) — 2026-07-05
 
 Follow-up to `launcher-test-2026-07-05.md`. Executed manually via the loop
-(Code session issues prompts → human runs them in a live `ecode`/pi TUI → Code
+(Code session issues prompts → human runs them in a live `taucode`/pi TUI → Code
 session reads paste-backs and verifies the filesystem side directly). This is
 the "下一轮 loop" the round-1 Cowork retrospective defined: T9 补测 (real key) +
 interactive extension verification (round-1 Finding 3 gap).
 
-Session: `ecode` interactive, `deepseek-v4-flash • high`, 1.0M window, extension
+Session: `taucode` interactive, `deepseek-v4-flash • high`, 1.0M window, extension
 `extension.ts` loaded. Real `DEEPSEEK_API_KEY` present (value never read —
 presence-only). Ambient dir baseline: 7 files pre-session.
 
@@ -16,13 +16,13 @@ presence-only). Ambient dir baseline: 7 files pre-session.
 | --- | --- | --- |
 | T9 real-key round-trip | **PASS** | `What is 17*23?` → `391`; `Say only: banana` → `banana`. Real deepseek-v4-flash answers, no auth error, two live turns. |
 | T9 ambient JSONL landing | **PASS** | Session wrote ONE file `019f3196-…jsonl`; grew 464 B (turn 1) → 1409 B (turn 2), mtime 17:29→17:36. **[dispatcher-verified, filesystem]** |
-| `/compact-status` gating readout | **PASS** | Config wired from ecode env: `compactAfterInputTokens=32,000`, `keepRecentAssistantMessages=3`. Gate correct (`16 < 32,000 → waiting`). |
+| `/compact-status` gating readout | **PASS** | Config wired from taucode env: `compactAfterInputTokens=32,000`, `keepRecentAssistantMessages=3`. Gate correct (`16 < 32,000 → waiting`). |
 | `/compaction set` takes effect | **PASS** | `set compact-after=10` → ack `32000 -> 10 (takes effect next turn)`; next `/compact-status` shows threshold 10 + gate flips to **active** (`16 >= 10`). Restore `set compact-after=32000` → ack `10 -> 32000`. |
 | Compaction trigger path fires | **PASS (no-op, by design)** | After banana turn: gate `active` (`22 >= 10`), Messages 4 / 2-assistant, Protection window 2/2 within keepRecent=3 → **Replacements: 0**. Trigger evaluated; correctly compacts nothing because every message is inside the protection window. |
 | Footer renders (T8) | **PASS** | `↑2.6k ↓51 R2.2k CH86.6% $0.000 0.3%/1.0M` — normal, extension loaded. |
 
-**0 FAIL. No fix-forward candidates** — `bin/ecode` and the extension behaved
-correctly throughout; the extension's config is correctly sourced from ecode's
+**0 FAIL. No fix-forward candidates** — `bin/taucode` and the extension behaved
+correctly throughout; the extension's config is correctly sourced from taucode's
 env defaults.
 
 ## Verification node
@@ -55,17 +55,17 @@ sans extension). Record as native-cache evidence only; do NOT attribute to the
 compaction extension.
 
 **F-C — ambient accumulation model clarified (refines round-1 log-only #1).**
-One JSONL file per `ecode` *invocation* (per session); that single file **grows
+One JSONL file per `taucode` *invocation* (per session); that single file **grows
 across turns** within the session (464 B → 1409 B here), not one file per turn.
 So Cowork ruling #1 ("one file per invocation, unbounded") is exact — unbounded
 in file *count* = number of launches. Retention decision unchanged (revisit with
 DF0 volume).
 
-**F-D — reasoning leakage in TUI output (misc, not ecode's fault).**
+**F-D — reasoning leakage in TUI output (misc, not taucode's fault).**
 `deepseek-v4-flash • high` emits visible chain-of-thought before the final answer
 even when asked to reply with only X (`Let me compute…`, `but I think this is a
 test…`). Model/effort behavior, not the launcher. "high" effort is shown in the
-footer; `bin/ecode` sets no effort flag (pi/provider default). Potential DF0
+footer; `bin/taucode` sets no effort flag (pi/provider default). Potential DF0
 output noise — note only.
 
 ## Round 3 — real compaction savings (Replacements > 0)
@@ -106,8 +106,8 @@ the agent self-recovered via `find` + absolute path, then read + answered correc
 (`5`). pi's read resolves via `resolveToCwd(path, cwd)` (read.ts:124) with `cwd`
 seeded from `process.cwd()` at startup (startup-ui.ts:69), yet runtime resolution
 anchored to the coding-agent package root — pi appears to re-anchor the session cwd
-to its own package rather than the user's `~/Projects/ecode`. No `--cwd`/`--project`
-CLI flag found for ecode to override. Can't patch `pi/` (hard zone). Real daily
+to its own package rather than the user's `~/Projects/taucode`. No `--cwd`/`--project`
+CLI flag found for taucode to override. Can't patch `pi/` (hard zone). Real daily
 friction: every relative read fails first try. Options: (a) confirm the mechanism
 with a pi-side trace, (b) find a pi flag/env to pin session cwd, (c) document
 "reads are cwd-relative to the package root; use absolute paths" until upstream.
@@ -155,7 +155,7 @@ per operator: that was a new pi **session, not a new process** — the extension
 module loads once per process, so an in-process new session keeps the old code
 while the per-session factory still re-reads env config (hence 32,000/3). A genuine
 process restart reloads the edited extension correctly (F-A now live). **No
-compile-cache bug; no `bin/ecode` change needed.** Lesson: for extension-reload
+compile-cache bug; no `bin/taucode` change needed.** Lesson: for extension-reload
 checks, "relaunch" must mean a new process — distinguish session-reset from
 process-restart.
 

@@ -28,7 +28,7 @@
  * context has sessionManager/modelRegistry/cwd/getContextUsage but nothing
  * settings-shaped; SettingsManager.withLock lives in pi core, is not handed to
  * extensions, and pi/ is out of bounds). The extension's own knobs are ALSO not
- * part of pi's `Settings` schema — they are env-var driven (`ECODE_*`) and read
+ * part of pi's `Settings` schema — they are env-var driven (`TAUCODE_*`) and read
  * once at factory time, so even a written settings value would not feed back in.
  *
  * Therefore the SOLID, TESTED core is the in-process runtime-mutable state above.

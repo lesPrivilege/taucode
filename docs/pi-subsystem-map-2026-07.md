@@ -11,7 +11,7 @@
 
 - `[R]` = 原 `pi/SUBSYSTEM-MAP.md`（根目录，中文为主）
 - `[P]` = 原 `pi/packages/coding-agent/SUBSYSTEM-MAP.md`（英文）
-- `[W]` = 原 `pi/workspace/SUBSYSTEM-MAP.md`（英文，行号引用粒度最细；文件头声明 "Paths relative to `/Users/lesprivilege/Projects/ecode/pi/`"）
+- `[W]` = 原 `pi/workspace/SUBSYSTEM-MAP.md`（英文，行号引用粒度最细；文件头声明 "Paths relative to `/Users/lesprivilege/Projects/taucode/pi/`"）
 
 **关于 file:line 引用的分歧**：三份原始测绘对同一函数/类/类型给出的行号大量互不一致——不是零星偏差，而是几乎每一条引用都有出入，个别情况下连**所在文件**都不一致（例如 `SessionTreeEntry` 联合类型的定义位置，`[R]` 记为 `extensions/types.ts:160`，`[P]`/`[W]` 记为 `harness/types.ts:409`，两者对同名类型给出不同的宿主文件）。这大概率是三次独立探测各自面对 `pi/`（随 upstream 同步演进的活分支）不同 checkout 状态下的结果，而非单纯笔误，但本次迁出合并**不核验、不裁决孰对孰错**，也不假设"以最新/最细者为准"。
 

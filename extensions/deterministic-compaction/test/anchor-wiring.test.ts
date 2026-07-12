@@ -7,7 +7,7 @@
  * still carries full recent context, so it needs no anchor), at most one per turn,
  * replacement-not-append.
  *
- * Discipline checks pinned here: flag two-state (ECODE_SEMANTIC_ANCHOR off ⇒
+ * Discipline checks pinned here: flag two-state (TAUCODE_SEMANTIC_ANCHOR off ⇒
  * byte-identical to v1), tail position (projected-only, trailing), replacement
  * (≤1 block/turn, no leftover prefix).
  */
@@ -119,37 +119,37 @@ function lastMsg(result: any): any {
 	return result.messages[result.messages.length - 1];
 }
 
-describe("resolveConfig — ECODE_SEMANTIC_ANCHOR / ECODE_ANCHOR_ACCEPTANCE", () => {
+describe("resolveConfig — TAUCODE_SEMANTIC_ANCHOR / TAUCODE_ANCHOR_ACCEPTANCE", () => {
 	let savedFlag: string | undefined;
 	let savedAccept: string | undefined;
 	beforeEach(() => {
-		savedFlag = process.env.ECODE_SEMANTIC_ANCHOR;
-		savedAccept = process.env.ECODE_ANCHOR_ACCEPTANCE;
+		savedFlag = process.env.TAUCODE_SEMANTIC_ANCHOR;
+		savedAccept = process.env.TAUCODE_ANCHOR_ACCEPTANCE;
 	});
 	afterEach(() => {
-		if (savedFlag === undefined) delete process.env.ECODE_SEMANTIC_ANCHOR;
-		else process.env.ECODE_SEMANTIC_ANCHOR = savedFlag;
-		if (savedAccept === undefined) delete process.env.ECODE_ANCHOR_ACCEPTANCE;
-		else process.env.ECODE_ANCHOR_ACCEPTANCE = savedAccept;
+		if (savedFlag === undefined) delete process.env.TAUCODE_SEMANTIC_ANCHOR;
+		else process.env.TAUCODE_SEMANTIC_ANCHOR = savedFlag;
+		if (savedAccept === undefined) delete process.env.TAUCODE_ANCHOR_ACCEPTANCE;
+		else process.env.TAUCODE_ANCHOR_ACCEPTANCE = savedAccept;
 	});
 
 	it("defaults OFF when the env var is unset", () => {
-		delete process.env.ECODE_SEMANTIC_ANCHOR;
+		delete process.env.TAUCODE_SEMANTIC_ANCHOR;
 		expect(resolveConfig().semanticAnchorEnabled).toBe(false);
 	});
 
-	it("is ON when ECODE_SEMANTIC_ANCHOR=1", () => {
-		process.env.ECODE_SEMANTIC_ANCHOR = "1";
+	it("is ON when TAUCODE_SEMANTIC_ANCHOR=1", () => {
+		process.env.TAUCODE_SEMANTIC_ANCHOR = "1";
 		expect(resolveConfig().semanticAnchorEnabled).toBe(true);
 	});
 
-	it("parses ECODE_ANCHOR_ACCEPTANCE into a trimmed, non-empty target list", () => {
-		process.env.ECODE_ANCHOR_ACCEPTANCE = "SUBSYSTEM-MAP.md, docs/out.md ,,";
+	it("parses TAUCODE_ANCHOR_ACCEPTANCE into a trimmed, non-empty target list", () => {
+		process.env.TAUCODE_ANCHOR_ACCEPTANCE = "SUBSYSTEM-MAP.md, docs/out.md ,,";
 		expect(resolveConfig().anchorAcceptanceTargets).toEqual(["SUBSYSTEM-MAP.md", "docs/out.md"]);
 	});
 
-	it("leaves targets undefined when ECODE_ANCHOR_ACCEPTANCE is unset", () => {
-		delete process.env.ECODE_ANCHOR_ACCEPTANCE;
+	it("leaves targets undefined when TAUCODE_ANCHOR_ACCEPTANCE is unset", () => {
+		delete process.env.TAUCODE_ANCHOR_ACCEPTANCE;
 		expect(resolveConfig().anchorAcceptanceTargets).toBeUndefined();
 	});
 });

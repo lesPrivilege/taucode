@@ -12,7 +12,7 @@
  * pi's own jiti-aliased loading context:
  *
  *   Error: Could not resolve "@earendil-works/pi-ai" imported by
- *   "@ecode/deterministic-compaction". Is it installed?
+ *   "@taucode/deterministic-compaction". Is it installed?
  *
  * So "reuse mock-provider.ts's scripted mock pattern" is followed in SHAPE
  * (a queue of scripted steps consumed turn-by-turn) using this extension's
@@ -64,9 +64,9 @@ describe("mock-provider-style loop simulation (see file header for scope/deviati
   it("threads >=6 tool use/result pairs through the hook turn-by-turn: canonical history is never mutated, send payload clears above the gate and passes through below it", () => {
     // Low trigger relative to the ~3000-char results so clearing activates partway through.
     const handler = createContextHookHandler({
-      ECODE_TRC: "1",
-      ECODE_TRC_TRIGGER_TOKENS: "1500", // chars/4 -> activates once one full 3000-char result is on the wire
-      ECODE_TRC_KEEP: "2",
+      TAUCODE_TRC: "1",
+      TAUCODE_TRC_TRIGGER_TOKENS: "1500", // chars/4 -> activates once one full 3000-char result is on the wire
+      TAUCODE_TRC_KEEP: "2",
     });
 
     // `canonical` is ONE array object, mutated (grown) in place turn over
@@ -115,7 +115,7 @@ describe("mock-provider-style loop simulation (see file header for scope/deviati
     expect((lastSend[11] as any).content[0].text).toBe("F".repeat(3000));
   });
 
-  it("ECODE_TRC unset: every turn is exact reference passthrough (master switch off)", () => {
+  it("TAUCODE_TRC unset: every turn is exact reference passthrough (master switch off)", () => {
     const handler = createContextHookHandler({});
     const canonical: AgentMessage[] = [];
     for (const step of SCRIPT) {

@@ -16,18 +16,18 @@ describe("LedgerPersistSink — WS-5 write-only JSONL", () => {
 		rmSync(dir, { recursive: true, force: true });
 	});
 
-	it("appends records and ensures .ecode/ledger/ is gitignored", () => {
+	it("appends records and ensures .taucode/ledger/ is gitignored", () => {
 		const sink = new LedgerPersistSink(dir, "session-1");
 		const file = sink.append({ kind: "view", path: "src/a.ts", hash: "abcd1234", turn: 1 });
 
-		expect(file).toBe(join(dir, ".ecode", "ledger", "session-1.jsonl"));
+		expect(file).toBe(join(dir, ".taucode", "ledger", "session-1.jsonl"));
 		const rows = readFileSync(file, "utf-8").trim().split("\n").map((line) => JSON.parse(line));
 		expect(rows).toHaveLength(1);
 		expect(rows[0]).toMatchObject({
 			session_id: "session-1",
 			record: { kind: "view", path: "src/a.ts", hash: "abcd1234", turn: 1 },
 		});
-		expect(readFileSync(join(dir, ".gitignore"), "utf-8")).toContain(".ecode/ledger/");
+		expect(readFileSync(join(dir, ".gitignore"), "utf-8")).toContain(".taucode/ledger/");
 	});
 
 	it("persists read events as hash lines without prose", () => {
@@ -41,13 +41,13 @@ describe("LedgerPersistSink — WS-5 write-only JSONL", () => {
 		const sink = new LedgerPersistSink(dir, "session-1");
 		sink.append(record);
 
-		const raw = readFileSync(join(dir, ".ecode", "ledger", "session-1.jsonl"), "utf-8");
+		const raw = readFileSync(join(dir, ".taucode", "ledger", "session-1.jsonl"), "utf-8");
 		expect(raw).toContain('"kind":"view"');
 		expect(raw).toContain('"hash":"abcd1234"');
 		expect(raw).not.toContain("secret prose");
 	});
 
 	it("does not create files until append is called", () => {
-		expect(existsSync(join(dir, ".ecode", "ledger"))).toBe(false);
+		expect(existsSync(join(dir, ".taucode", "ledger"))).toBe(false);
 	});
 });
